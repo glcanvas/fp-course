@@ -36,6 +36,7 @@ tags
 .idea/
 .ideaHaskellLib/
 *.iml
+out/
 
 # Atom
 .haskell-ghc-mod.json
