@@ -1,37 +1,53 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Block5 where
+module Block5 (
+    NotEmpty
+  , ThisOrThat
+  , Name
+  , Endo
+  , Builder
+  , maybeConcat
+  , eitherConcat
+  , fromString
+  , toString
+  , appEndo
+
+)
+where
 
 --task1
 maybeConcat :: forall a . [Maybe [a]] -> [a]
 maybeConcat = foldl inner []
-                        where
-                            inner :: [a] -> Maybe [a] -> [a]
-                            inner x Nothing = x
-                            inner x (Just y) = x ++ y
+  where
+      inner :: [a] -> Maybe [a] -> [a]
+      inner x Nothing = x
+      inner x (Just y) = x ++ y
 
 eitherConcat :: forall a b . Monoid a => Monoid b => [Either a b] -> (a, b)
 eitherConcat = foldl inner (mempty, mempty)
-                      where
-                          inner :: (a, b) -> Either a b -> (a, b)
-                          inner (a, b) (Left x) = (a <> x, b )
-                          inner (a, b) (Right x) = (a, b <> x)
+  where
+      inner :: (a, b) -> Either a b -> (a, b)
+      inner (a, b) (Left x) = (a <> x, b )
+      inner (a, b) (Right x) = (a, b <> x)
 
 --task2
-data NotEmpty a = a :| [a] deriving Show
-
+data NotEmpty a
+  = a :| [a]
+  deriving (Show)
 
 instance Semigroup (NotEmpty a) where
-  -- x <> (y <> z) = (x <> y) <> z
   (<>) :: NotEmpty a -> NotEmpty a -> NotEmpty a
   (<>) (x :| xs) (y :| ys) = x :| (xs ++ [y] ++ ys)
 
-
-data ThisOrThat a b = This a | That b | Both a b deriving Show
+data ThisOrThat a b
+  = This a
+  | That b
+  | Both a b
+  deriving (Show)
 
 instance Semigroup (ThisOrThat a b) where
-  -- x <> (y <> z) = (x <> y) <> z
+  -- буду возвращать самую первую
   (<>) :: ThisOrThat a b -> ThisOrThat a b -> ThisOrThat a  b
   (<>) (This a) (This _) = This a
   (<>) (That a) (That _) = That a
@@ -42,11 +58,11 @@ instance Semigroup (ThisOrThat a b) where
   (<>) (This a) (Both _ c) = Both a c
   (<>) (That a) (Both b _) = Both b a
   (<>) (Both a b) (Both _ _) = Both a b
-  -- буду возвращать самую первую
 
 --task2 hard
-newtype Name = Name String
-  deriving Show
+newtype Name
+  = Name String
+  deriving (Show)
 
 instance Semigroup Name where
   (<>):: Name -> Name -> Name
@@ -58,7 +74,9 @@ instance Monoid Name where
   mempty :: Name
   mempty = Name ""
 
-newtype Endo a = Endo {appEndo :: a -> a}
+newtype Endo a = Endo
+  { appEndo :: a -> a
+  }
 
 instance Semigroup (Endo a) where
   (<>) :: Endo a -> Endo a -> Endo a
@@ -91,8 +109,8 @@ fromString = foldl (\b a -> b <> One a) mempty
 toString :: Builder -> String
 toString (One x) = [x]
 toString (Many (One x : xs)) = let innerArray = toString (Many xs) in
-                                  x : innerArray
+  x : innerArray
 toString (Many (Many x : xs)) = let innerArray = toString (Many xs) in
-                                   let innerElem = toString (Many x) in
-                                    innerElem ++ innerArray
+    let innerElem = toString (Many x) in
+      innerElem ++ innerArray
 toString (Many []) = mempty
