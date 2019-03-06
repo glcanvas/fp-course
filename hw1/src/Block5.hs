@@ -1,22 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Block5 (
-    NotEmpty
-  , ThisOrThat
-  , Name
-  , Endo
-  , Builder
-  , maybeConcat
-  , eitherConcat
-  , fromString
-  , toString
-  , appEndo
-
-)
+module Block5
 where
 
---task1
+-- | Function than return list of item in Maybe `box`
 maybeConcat :: forall a . [Maybe [a]] -> [a]
 maybeConcat = foldl inner []
   where
@@ -24,6 +12,7 @@ maybeConcat = foldl inner []
       inner x Nothing = x
       inner x (Just y) = x ++ y
 
+-- | Function that return pair of two arrays of item in Either `box`
 eitherConcat :: forall a b . Monoid a => Monoid b => [Either a b] -> (a, b)
 eitherConcat = foldl inner (mempty, mempty)
   where
@@ -31,15 +20,17 @@ eitherConcat = foldl inner (mempty, mempty)
       inner (a, b) (Left x) = (a <> x, b )
       inner (a, b) (Right x) = (a, b <> x)
 
---task2
+-- | Representation of not empty array
 data NotEmpty a
   = a :| [a]
   deriving (Show)
 
+-- | Realization of  semigroup for not empty array
 instance Semigroup (NotEmpty a) where
   (<>) :: NotEmpty a -> NotEmpty a -> NotEmpty a
   (<>) (x :| xs) (y :| ys) = x :| (xs ++ [y] ++ ys)
 
+-- | Representation of data that may store one or two
 data ThisOrThat a b
   = This a
   | That b
@@ -47,7 +38,7 @@ data ThisOrThat a b
   deriving (Show)
 
 instance Semigroup (ThisOrThat a b) where
-  -- буду возвращать самую первую
+  -- | if return each time left of arguments that will be true for semigroup rule
   (<>) :: ThisOrThat a b -> ThisOrThat a b -> ThisOrThat a  b
   (<>) (This a) (This _) = This a
   (<>) (That a) (That _) = That a
@@ -114,3 +105,26 @@ toString (Many (Many x : xs)) = let innerArray = toString (Many xs) in
     let innerElem = toString (Many x) in
       innerElem ++ innerArray
 toString (Many []) = mempty
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

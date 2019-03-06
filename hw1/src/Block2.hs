@@ -10,9 +10,12 @@ where
 
 import System.Random (newStdGen, randomRs)
 
+-- | Function from outside
 randomIntList :: Int -> Int -> Int -> IO [Int]
 randomIntList n from to = take n . randomRs (from, to) <$> newStdGen
 
+-- | Remove element by index if index correct in Just
+--  otherwise return Nothing
 removeByIndex :: forall a . Int -> [a] -> Maybe a
 removeByIndex pos array
   | pos < 0 = Nothing
@@ -26,6 +29,13 @@ removeByIndex pos array
         else Just x
       getItem _ [] = Nothing
 
+-- | Just merge sort
+--
+-- >>> [1,7,2,8]
+-- [1,2,7,8]
+--
+-- >>> []
+-- []
 mergeSort :: forall a . Ord a => [a] -> [a]
 mergeSort array = let len = length array in
   case len of
