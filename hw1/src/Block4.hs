@@ -1,8 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Block4
 where
+
+import Block3(Tree(Leaf, Branch))
 
 -- | Representation of std::pair<a,b>
 data Pair a
@@ -37,12 +40,6 @@ instance Foldable NotEmpty where
         iter a [] = f a n
         iter a arr = let inner = iter (head arr) (tail arr) in
           f a inner
-
--- | Realization of binnary tree
-data Tree a
-  = Leaf
-  | Branch [a] (Tree a) (Tree a)
-  deriving (Show)
 
 -- | Realization of fold for Tree
 -- hard version
