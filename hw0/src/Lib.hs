@@ -35,7 +35,6 @@ where
 
 import Data.Void (Void)
 import Data.Function (fix)
-import Data.Maybe (mapMaybe)
 
 -- | show that Either is distibutivity
 distributivity:: Either a (b, c) -> (Either a b, Either a c)
@@ -70,11 +69,15 @@ doubleNeg  :: a -> Neg (Neg a)
 doubleNeg  a f = f a
 
 -- | show that Glivenko theorem works
-{-
- (((a | (a -> V)) -> V) -> V)
--}
+--
+-- (((a | (a -> V)) -> V) -> V)
+-- \!(a|!a) -> !(a|!a)a (\a -> )
+-- notEitherANotA :: ((a | (a -> V)) -> V)
+-- x = (\a -> notEitherANotA (Left a) :: Either a !a) :: a -> V
+-- notEitherANotA x :: Void
+--
 excludedNeg :: Neg (Neg (Either a (Neg a)))
-excludedNeg f = undefined
+excludedNeg notEitherANotA = notEitherANotA $ Right (notEitherANotA . Left)
 
 -- | show that pierce not working
 pierce :: ((a -> b) -> a) -> a
@@ -263,7 +266,6 @@ taskSevenFirst = t5 (t0 t4 t6)  (t3 (t2 t1) t10)
     t10 :: [(String -> String, String)]
     t10 = [(t8, t9)]
 
-
 -- | Derive type for second expression block seven
 -- (\x -> zip (lefts x) (rights x)) [Left (1 + 2), Right (2 ^ 6)]
 taskSevenSecond :: [(Integer, Integer)]
@@ -314,5 +316,3 @@ taskSevenThird = t7
     t6 x = t4 (t3 x 4) 0
     t7 :: Integer -> Bool
     t7 x = t2 (t5 x) (t6 x)
-
-

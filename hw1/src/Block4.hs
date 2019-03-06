@@ -64,13 +64,13 @@ instance Foldable Tree where
 
 -- | Function that return not empty list of split
 splitOn :: forall a . Eq a => a -> [a] -> NotEmpty [a]
-splitOn pattern = foldl cmp ([] :| [])
+splitOn pattern = foldr cmp ([] :| [])
   where
-      cmp :: NotEmpty [a] -> a -> NotEmpty [a]
-      cmp (x:|xs) item =
+      cmp :: a -> NotEmpty [a] -> NotEmpty [a]
+      cmp item (x:|xs) =
         if pattern == item
-        then [] :| (xs ++ [x])
-        else (x ++ [item]) :| xs
+        then [] :| ([x] ++ xs)
+        else ([item] ++ x) :| xs
 
 -- | Function that concat not empty list with delimiter
 joinWith :: forall a . a -> NotEmpty [a] -> [a]
