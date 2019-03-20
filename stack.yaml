@@ -1,8 +1,7 @@
-resolver: lts-13.3
+resolver: lts-13.2
 
 packages:
-- hw0
-- hw1
+- hw2
 
 extra-deps: []
 
