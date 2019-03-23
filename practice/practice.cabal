@@ -29,4 +29,5 @@ library
                        , mtl
                        , exceptions
                        , containers
+                       , deepseq
   default-language:    Haskell2010
