@@ -14,20 +14,6 @@ first f (r, s) = (f r, s)
 
 newtype Parser s a = Parser {runParser :: [s] -> Maybe (a, [s])}
 
--- laws: fmap id  == id
---        fmap (f . g) = fmap f . fmap g
---
--- proof:
---  1) fmap (\x -> x) (Parser f) ==
---        Just (a, s) -> Just ((\x -> x) a, s) <=> Just (a, s) == Just (a, s)
---        Nothing -> Nothing
---  2) fmap (f . g) == fmap f . fmap g
---      . :: (b -> c) -> (a -> b) -> a -> c
---      Just ( (f . g) a, s) = Just ( f (g a), s)
---      Nothing -> Nothing
---
---      fmap f <=> Just( f a, s)
---      (fmap f)
 instance Functor (Parser s) where
   fmap :: (a -> b) -> Parser s a -> Parser s b
   fmap f (Parser parser) =
@@ -43,28 +29,30 @@ instance Applicative (Parser s) where
   pure a = Parser (\s -> Just (a, s))
 
   (<*>) :: Parser s (a -> b) -> Parser s a -> Parser s b
-  (Parser f) <*> (Parser v) = Parser
-                                (\ x ->
-                                   let resultFunc = f x in
-                                     case resultFunc of
-                                         Just (innerFunc, array) ->
-                                          let inner' = v array in
-                                              case inner' of
-                                                Just (a, s) -> Just (innerFunc a, s)
-                                                Nothing -> Nothing
-                                         Nothing -> Nothing)
+  (Parser f) <*> (Parser v) =
+    Parser
+      (\ x ->
+        let resultFunc = f x in
+        case resultFunc of
+          Just (innerFunc, array) ->
+            let inner' = v array in
+            case inner' of
+              Just (a, s) -> Just (innerFunc a, s)
+              Nothing -> Nothing
+          Nothing -> Nothing)
 
 instance Monad (Parser s) where
   return :: a -> Parser s a
   return = pure
 
   (>>=) :: Parser s a -> (a -> Parser s b) -> Parser s b
-  Parser value >>= f = Parser
-                         (\ s ->
-                            let value' = value s in
-                              case value' of
-                                  Nothing -> Nothing
-                                  Just (a, array) -> (runParser $ f a) array)
+  Parser value >>= f =
+    Parser
+    (\ s ->
+      let value' = value s in
+      case value' of
+        Nothing -> Nothing
+        Just (a, array) -> (runParser $ f a) array)
 
 
 instance Alternative (Parser s) where
@@ -112,6 +100,14 @@ stream :: Eq s => [s] -> Parser s [s]
 stream [] = return []
 stream (x:xs) = element x >>= (\s -> stream xs >>= (\xxs -> return (s : xxs)))
 
+-- | Parser that return one element from stream
+getOne :: Parser s s
+getOne =
+  Parser
+    (\case
+       [] -> Nothing
+       (x:xs) -> Just (x, xs))
+
 -- | Parser that parse bracket sequence and return Just if sequence is correct or Nothing
 --
 -- >>> runParser branchSeq "vsem privei ()()()"
@@ -154,21 +150,25 @@ parserBranchSeq = parser 0
 -- >>> runParser parserInteger ""
 -- >>> Nothing
 --
--- >>> runParser parserInteger "hmmm123"
--- >>> Nothing
+-- >>> runParser parserInteger "123hmmm"
+-- >>> Just(123, "hmmm")
 --
 parserInteger :: Parser Char Int
 parserInteger = parserSign
   where
-    parserNumber :: Int -> Parser Char Int
-    parserNumber value =
+    parserNumber :: Bool -> Int -> Parser Char Int
+    parserNumber readAtLeastOne value =
       Parser
         (\case
-           [] -> Just (value, [])
+           [] -> if readAtLeastOne then Just (value, []) else Nothing
            array -> do
-             (digitChar, tail) <- runParser (satisfy isDigit) array
-             let digit = ord digitChar - ord '0'
-             runParser (parserNumber (value * 10 + digit)) tail)
+             (digitChar, tail) <- runParser getOne array
+             if isDigit digitChar
+             then runParser (parserNumber True (value * 10 + (ord digitChar - ord '0'))) tail
+             else
+              if readAtLeastOne
+              then Just (value, digitChar:tail)
+              else Nothing)
     parserSign :: Parser Char Int
     parserSign =
       Parser
@@ -178,14 +178,45 @@ parserInteger = parserSign
              let combine = element '+' <|> element '-' <|> satisfy isDigit
              (value, tail) <- runParser combine array
              case value of
-               '+' -> runParser (parserNumber 0) tail
-               '-' -> let v = fmap ((-1) * ) (parserNumber 0) in
+               '+' -> runParser (parserNumber False 0) tail
+               '-' -> let v = fmap ((-1) * ) (parserNumber False 0) in
                         runParser v tail
-               d -> runParser (parserNumber 0) (d:tail))
+               d -> runParser (parserNumber True 0) (d:tail))
 
 -- | Function that parse string of numbers and fold this into list of lists
+--
+-- >>> runParser parserFold "1,1,1,1"
+-- >>> Just ([[1],[1]), "")
+--
+-- >>> runParser parserFold ",1,1,1"
+-- >>> Nothing
+--
+-- >>> runParser parserFold "2, 2,1,1"
+-- >>> Nothing
+--
+-- >>> runParser parserFold "-1,1,1,1"
+-- >>> Nothing
+--
+-- >>> runParser parserFold "+3,2,3,3,     1, 1"
+-- >>> Just ([[2,3,3],[1]],"")
+--
+-- >>> runParser parserFold "+3,2,3,3,     2, 1"
+-- >>> Nothing
+--
+-- >>> runParser parserFold "+3,2,3,3,     2 1"
+-- >>> Nothing
+--
+-- >>> runParser parserFold "+3,2,3,3,     2, 1, 2"
+-- >>> Just ([[2,3,3],[1,2]],"")
+--
+-- >>> runParser parserFold "+3,2,3,3,     2, 1, 211"
+-- >>> Just ([[2,3,3],[1,211]],"")
+--
+-- >>> runParser parserFold "+3,2,3,3,     2, 1, 211asddas"
+-- >>> Nothing
+--
 parserFold :: Parser Char [[Int]]
-parserFold = undefined
+parserFold = parserInDepend passWhitespace
   where
     passWhitespace :: Parser Char ()
     passWhitespace =
@@ -199,40 +230,40 @@ parserFold = undefined
     passOneDelimiter =
       Parser
         (\case
-          [] -> Nothing -- or Just ((), []) i'm mot uveren
+          [] -> Nothing
           array ->
             do
               (_, tail') <- runParser passWhitespace array
               (_, tail'') <- runParser (element ',') tail'
               (_, tail''') <- runParser passWhitespace tail''
               Just ((), tail'''))
-    parseSizeArray :: Parser Char Int
-    parseSizeArray = undefined
-      where
-        parsePlusOrDigit :: Parser Char Int
-        parsePlusOrDigit =
-          Parser
-            (\case
-              [] -> Nothing
-              array -> do
-                let combine = element '+' <|> satisfy isDigit
-                (evalResult, tail) <- runParser combine array
-                case evalResult of
-                  '+' -> runParser (parseNumberWhileCan 0) tail
-                  digit -> runParser (parseNumberWhileCan 0) (digit:tail)
-            )
-        parseNumberWhileCan :: Int -> Parser Char Int
-        parseNumberWhileCan value =
-          Parser
-            (\case
-              [] -> Just (value, [])
-              array -> do
-                (digitChar, tail) <- runParser (satisfy isDigit) array
-                let digit = ord digitChar - ord '0'
-                runParser (parseNumberWhileCan (value * 10 + digit)) tail
-            )
-
-
-
-
---Парсер целого числа, перед которым может быть знак + или -.
+    readArrayTitle :: Parser Char () -> Parser Char (Maybe Int)
+    readArrayTitle passParser =
+      Parser
+        (\case
+        [] -> Just(Nothing, [])
+        array -> do
+         (_, tail') <- runParser passParser array
+         (num, tail'') <- runParser parserInteger tail'
+         if num >= 0
+          then Just (Just num, tail'')
+          else Nothing)
+    readArray :: Int -> Parser Char [Int]
+    readArray tailSize =
+      Parser (\case
+                [] -> if tailSize > 0 then Nothing else Just([], [])
+                array -> if tailSize == 0
+                  then Just ([], array)
+                  else do
+                    (_, tail') <- runParser passOneDelimiter array
+                    (value, tail'') <- runParser parserInteger tail'
+                    fmap (\(a, b) -> (value:a, b)) (runParser (readArray (tailSize - 1)) tail''))
+    parserInDepend :: Parser Char () -> Parser Char [[Int]]
+    parserInDepend delimiter =
+      Parser
+          (\s -> do (title, tail') <- runParser (readArrayTitle delimiter) s
+                    case title of
+                        Nothing -> Just ([], tail')
+                        Just value -> do (array, tail'') <- runParser (readArray value)
+                                                              tail'
+                                         fmap (\(a, b) -> (array:a, b)) (runParser (parserInDepend passOneDelimiter) tail''))
