@@ -9,7 +9,7 @@ module Queue (
 -- | Data type of queue from two stack
 data Queue a
   = Queue [a] [a] Int -- constructor of Queue which realized with two arrays
-  deriving Show
+  deriving (Show, Eq)
 
 -- | Function that return size of queue
 queueSize :: Queue a -> Int

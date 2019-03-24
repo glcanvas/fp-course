@@ -1,19 +1,29 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Block3
-
-where
+module Block3 (
+  Parser(Parser)
+  , runParser
+  , ok
+  , eof
+  , satisfy
+  , element
+  , stream
+  , getOne
+  , parserBranchSeq
+  , parserInteger
+  , parserFold
+) where
 
 import Control.Applicative
 import Control.Monad.State
 import Data.Char(isDigit, ord, isSpace)
 
-first :: (a -> c) -> (a, b) -> (c, b)
-first f (r, s) = (f r, s)
+-- | Representation of parser
+newtype Parser s a
+  = Parser {runParser :: [s] -> Maybe (a, [s])} -- constructor for parser that get a function that call in parse
 
-newtype Parser s a = Parser {runParser :: [s] -> Maybe (a, [s])}
-
+-- | instance Functor for parser
 instance Functor (Parser s) where
   fmap :: (a -> b) -> Parser s a -> Parser s b
   fmap f (Parser parser) =
@@ -24,6 +34,7 @@ instance Functor (Parser s) where
                Just (a, s) -> Just (f a, s)
                Nothing -> Nothing)
 
+-- | instance applicative for parser
 instance Applicative (Parser s) where
   pure :: a -> Parser s a
   pure a = Parser (\s -> Just (a, s))
@@ -41,6 +52,7 @@ instance Applicative (Parser s) where
               Nothing -> Nothing
           Nothing -> Nothing)
 
+-- | instance monad for parser
 instance Monad (Parser s) where
   return :: a -> Parser s a
   return = pure
@@ -54,7 +66,7 @@ instance Monad (Parser s) where
         Nothing -> Nothing
         Just (a, array) -> (runParser $ f a) array)
 
-
+-- | instance alternative for parser
 instance Alternative (Parser s) where
   empty :: Parser s a
   empty = Parser (const Nothing)

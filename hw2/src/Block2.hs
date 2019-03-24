@@ -30,18 +30,18 @@ eval (Const x) = Right x
 eval (Add l r) =
   let leftEval = eval l
    in let rightEval = eval r
-       in rightEval >>= hmm leftEval
+       in rightEval >>= innerEvaluate leftEval
   where
-    hmm :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
-    hmm z x = fmap (+ x) z
+    innerEvaluate :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
+    innerEvaluate z x = fmap (+ x) z
 
 eval (Div l r) =
   let leftEval = eval l in
     let rightEval = eval r in
-      rightEval >>= hmm leftEval
+      rightEval >>= innerEvaluate leftEval
   where
-    hmm :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
-    hmm z x =
+    innerEvaluate :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
+    innerEvaluate z x =
       if x == 0
         then Left DivByZero
         else fmap (`div` x) z
@@ -49,26 +49,26 @@ eval (Div l r) =
 eval (Mull l r) =
   let leftEval = eval l
    in let rightEval = eval r
-       in rightEval >>= hmm leftEval
+       in rightEval >>= innerEvaluate leftEval
   where
-    hmm :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
-    hmm z x = fmap (* x) z
+    innerEvaluate :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
+    innerEvaluate z x = fmap (* x) z
 
 eval (Sub l r) =
   let leftEval = eval l
    in let rightEval = eval r
-       in rightEval >>= hmm leftEval
+       in rightEval >>= innerEvaluate leftEval
   where
-    hmm :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
-    hmm z x = fmap (\y -> y - x) z
+    innerEvaluate :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
+    innerEvaluate z x = fmap (\y -> y - x) z
 
 eval (Pow l r) =
   let leftEval = eval l
    in let rightEval = eval r
-       in rightEval >>= hmm leftEval
+       in rightEval >>= innerEvaluate leftEval
   where
-    hmm :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
-    hmm z x =
+    innerEvaluate :: Either ArithmeticError Int -> Int -> Either ArithmeticError Int
+    innerEvaluate z x =
       if x < 0
         then Left PowNegate
         else fmap (  ^ x) z
@@ -112,6 +112,6 @@ moving n array =
     innerCall (q, s, f, []) _ = return $ reverse f
     innerCall ms st =
       let (mv', ms') = runState st ms in
-       innerCall ms' st
+        innerCall ms' st
     toFloat :: Int -> Float
     toFloat x = fromIntegral x :: Float

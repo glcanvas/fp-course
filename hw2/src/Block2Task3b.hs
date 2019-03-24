@@ -2,12 +2,11 @@
 {-# LANGUAGE UndecidableInstances#-}
 {-# LANGUAGE FlexibleInstances#-}
 
-module Block2Task3b
-( MonadFish(returnFish, (>=>))
-, MonadJoin(returnJoin, join)
-, Monad(return, (>>=))
-)
-where
+module Block2Task3b(
+  MonadFish(returnFish, (>=>))
+  , MonadJoin(returnJoin, join)
+  , Monad(return, (>>=))
+) where
 
 import Prelude (const, id)
 
@@ -32,10 +31,10 @@ class Monad m where
     -- | Function that build new monad from monad and function that return monad
     (>>=)  :: m a -> (a -> m b) -> m b
 
+-- | create MonadJoin from Monad
 instance Monad m => MonadJoin m where
   returnJoin :: a -> m a
   returnJoin = return
 
   join :: m (m a) -> m a
   join mma = mma >>= id
-  --mma >>= (\x -> x >>= (\y -> return y))
