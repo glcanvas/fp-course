@@ -20,8 +20,10 @@ import Control.Monad.State
 import Data.Char(isDigit, ord, isSpace)
 
 -- | Representation of parser
-newtype Parser s a
-  = Parser {runParser :: [s] -> Maybe (a, [s])} -- constructor for parser that get a function that call in parse
+newtype Parser s a = Parser
+  {   -- | Constructor for parser that get a function that call in parse
+      runParser :: [s] -> Maybe (a, [s])
+  }
 
 -- | instance Functor for parser
 instance Functor (Parser s) where

@@ -30,3 +30,4 @@ movingTest =
     it "test3" $ moving 2 [1, 5, 3, 8, 7, 9, 6] `shouldBe` ([1.0, 3.0, 4.0, 5.5, 7.5, 8.0, 7.5] :: [Float])
     it "test4" $ moving 10000 [] `shouldBe` ([] :: [Float])
     it "test5" $ take 5 (moving 10000 [0 .. 10000]) `shouldBe` ([0, 0.5, 1, 1.5, 2.0] :: [Float])
+    it "test6" $ moving 1 [0 .. 100000] `shouldBe` ([0.0 .. 100000.0] :: [Float])
