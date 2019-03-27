@@ -163,6 +163,5 @@ instance Monad NonEmpty where
   (>>=) :: NonEmpty a -> (a -> NonEmpty b) -> NonEmpty b
   (x :| xs) >>= func =
     let b :| bs = func x in
-      let cs  =  xs >>= toList . func in
-        let gg = toList . func in
+      let cs = xs >>= toList . func in
         b :| (bs ++ cs)
