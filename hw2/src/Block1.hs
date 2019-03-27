@@ -14,13 +14,13 @@ import Data.Foldable(toList)
 -- | data for representation of  not empty list
 data NonEmpty a
   = a :| [a] -- | constructor of not empty list
-  deriving (Show, Eq)
+  deriving Show
 
 -- | data for representation of Tree
 data Tree a
   = Branch (Tree a) (Tree a) -- constructor for branch of tree
   | Leaf a -- constructor for leaf that contains single value
-  deriving (Show, Eq)
+  deriving Show
 
 -- | Function that return sum of splited 'String' by whitespace
 --
