@@ -10,6 +10,6 @@ queueMain :: IO()
 queueMain =
   hspec $
   describe "queue tests" $ do
-    it "test1" $ queueSize (queuePush 1 queueEmpty) `shouldBe` (1 :: Int)
-    it "test2" $  queuePop queueEmpty `shouldBe` (Nothing :: Maybe (Queue Int, Int))
-    it "test3" $  queuePop (queuePush 1 queueEmpty) `shouldBe` (Just (queueEmpty, 1) :: Maybe (Queue Int, Int))
+    it "queue size" $ queueSize (queuePush 1 queueEmpty) `shouldBe` (1 :: Int)
+    it "queue pop on empty queue" $  queuePop queueEmpty `shouldBe` (Nothing :: Maybe (Queue Int, Int))
+    it "queue pop on not empty queue" $  queuePop (queuePush 1 queueEmpty) `shouldBe` (Just (queueEmpty, 1) :: Maybe (Queue Int, Int))

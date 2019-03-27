@@ -9,17 +9,18 @@ module Block1 (
 
 import Data.Char (isSpace)
 import Text.Read (readMaybe)
+import Data.Foldable(toList)
 
 -- | data for representation of  not empty list
 data NonEmpty a
   = a :| [a] -- | constructor of not empty list
-  deriving Show
+  deriving (Show, Eq)
 
 -- | data for representation of Tree
 data Tree a
   = Branch (Tree a) (Tree a) -- constructor for branch of tree
   | Leaf a -- constructor for leaf that contains single value
-  deriving Show
+  deriving (Show, Eq)
 
 -- | Function that return sum of splited 'String' by whitespace
 --
@@ -102,26 +103,23 @@ instance Functor Tree where
 --       b) Branch f1 f2 <*> Leaf y == Branch (f1 <*> Leaf y) (f2 <*> Leaf y)
 --          Leaf ( $ y) <*> Branch f1 f2 == Branch ( Leaf ( $ y) <*> f1 ) ( Leaf ( $ y) <*> f2)
 --
---            т.к. база Leaf Leaf, которая доказана, то пункт б выполнен по предположению индукции
--- | Representation applicative for Tree
 instance Applicative Tree where
   pure :: a -> Tree a
   pure = Leaf
 
   (<*>) :: Tree (a -> b) -> Tree a -> Tree b
   Leaf f <*> Leaf x = Leaf $ f x
-  Leaf f <*> Branch l r = Branch (Leaf f <*> l) (Leaf f <*> r)
-  Branch fl fr <*> Leaf x =  Branch (fl <*> Leaf x) (fr <*> Leaf x)
-  Branch fl fr <*> Branch xl xr = Branch (fl <*> xl) (fr <*> xr)
+  Branch fl fr <*> x =  Branch (fl <*> x) (fr <*> x)
 
 -- | Representation foldable for Tree
 instance Foldable Tree where
   foldr :: (a -> b -> b) -> b -> Tree a -> b
   foldr f z (Leaf x) = f x z
-  foldr f z (Branch l r) = foldr f (foldr f z l) r
+  foldr f z (Branch l r) = foldr f (foldr f z r) l
 
 -- | Representation traversable for Tree
 instance Traversable Tree where
+  traverse :: Applicative f => (a -> f b) -> Tree a -> f (Tree b)
   traverse f (Leaf x) = fmap Leaf (f x)
   traverse f (Branch l r) =
     let left = traverse f l in
@@ -139,7 +137,13 @@ instance Applicative NonEmpty where
   pure x = x :| []
 
   (<*>) :: NonEmpty (a -> b) -> NonEmpty a -> NonEmpty b
-  (f :| fs) <*> (x :| xs) = f x :| ( fs <*> xs)
+  f <*> x = let func = toList f  in
+              let array = toList x in
+                fromList $ func <*> array
+    where
+      fromList :: [c] -> NonEmpty c
+      fromList (x : xs) = x :| xs
+      fromList [] = undefined
 
 -- | Representation foldable for NonEmpty
 instance Foldable NonEmpty where
@@ -151,3 +155,14 @@ instance Traversable NonEmpty where
   traverse :: Applicative f => (a -> f b) -> NonEmpty a -> f (NonEmpty b)
   traverse f (x :| xs) =  (:|) <$> f x <*> traverse f xs
 
+-- | Representation monad for NonEmpty
+instance Monad NonEmpty where
+  return :: a -> NonEmpty a
+  return x = x :| []
+
+  (>>=) :: NonEmpty a -> (a -> NonEmpty b) -> NonEmpty b
+  (x :| xs) >>= func =
+    let b :| bs = func x in
+      let cs  =  xs >>= toList . func in
+        let gg = toList . func in
+        b :| (bs ++ cs)
