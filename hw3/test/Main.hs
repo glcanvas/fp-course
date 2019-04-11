@@ -4,6 +4,7 @@ module Main (
 
 
 import Test.Hspec
+import UtilTests (blockUtilTests)
 --import Block1Test (block1Main)
 --import Block2Test (block2Main)
 --import QueueTest (queueMain)
@@ -12,7 +13,7 @@ import Test.Hspec
 -- | combine all tests from blocks
 main :: IO ()
 main = do
-  putStringLn "yse ok"
+  blockUtilTests
   --queueMain
   --block1Main
   --block2Main

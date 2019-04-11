@@ -2,24 +2,25 @@ module UtilTests where
 
 
 import Test.Hspec
-import Util (Expression(..)
+import Data.Void
+import Text.Megaparsec
+
+import Util (AssignValue(..)
                , Statement(..)
                , Parser
                , parserAssign
                , parserAssignValue)
 
 blockUtilTests :: IO ()
-blockUtilTests = undefined
+blockUtilTests = parserAssignValueTest
 
-{-
-stringSumTest :: IO()
-stringSumTest =
+parserAssignValueTest :: IO()
+parserAssignValueTest =
   hspec $
   describe "parserAssignValue" $ do
-    it "normal test" $ stringSum "1 2 3 4" `shouldBe` (Just 10 :: Maybe Int)
-    it "test with empty string" $ stringSum "" `shouldBe` (Just 0 :: Maybe Int)
-    it "test with one negate number" $ stringSum "1 -2" `shouldBe` (Just (-1) :: Maybe Int)
-    it "test with all negate number" $ stringSum "-2 -2 " `shouldBe` (Just (-4) :: Maybe Int)
-    it "incrrect input" $ stringSum "-2 -2 hmmm" `shouldBe` (Nothing:: Maybe Int)
-    it "test with whitespace string" $ stringSum "          " `shouldBe` (Just 0:: Maybe Int)
--}
+    it "normal test" $
+      runParser parserAssignValue "test" "1234;" `shouldBe`
+      (Right [Number 1234] :: Either (ParseErrorBundle String Void) [AssignValue])
+    it "simple correct test" $
+      runParser parserAssignValue "test" "$abs1234'privet'\"kek\";" `shouldBe`
+      (Right [Pointer "abs1234", SingleQuote "privet", DoubleQuote "kek"] :: Either (ParseErrorBundle String Void) [AssignValue])
