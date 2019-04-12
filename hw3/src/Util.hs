@@ -1,17 +1,16 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Util {-(
+module Util (
   AssignValue(..)
   , Statement(..)
-  , Parser
-  , skip
-  , parserEndOfCommand
-  , symbol
-  , singleQuote
-  , identifier
   , parserAssign
   , parserAssignValue
-)-} where
+  , parserPointer
+  , parserFile
+  , parserCommands
+  , resolveAssignValue
+  , parseDoubleQuote
+) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Data.Map as Map
@@ -20,9 +19,8 @@ import Text.Megaparsec
 import Data.Maybe (fromMaybe)
 import Data.Either (fromRight)
 import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar)
-import System.Directory
 import Data.Char(isSpace)
-import Data.String.Utils
+import UtilParserBase
 
 data Statement = Seq [Statement]
   | AssignRaw String [AssignValue]
@@ -35,58 +33,6 @@ data AssignValue = Number Int
   | DoubleQuote String
   | Pointer String
   deriving (Show, Eq)
-
-type Parser = Parsec Void String
-
-
--- | Skip all whitespace
-skip :: Parser ()
-skip = L.space space1 lineCmnt blockCmnt
-  where
-    lineCmnt  = L.skipLineComment "//"
-    blockCmnt = L.skipBlockComment "/*" "*/"
-
-isSpaceWithoutEOL :: Parser String
-isSpaceWithoutEOL = many (satisfy (\x -> isSpace x && x /= '\n'))
-
-isEOL :: Parser String
-isEOL = many (satisfy  (=='\n'))
-
--- | Function that correct parse not empty string for common template
-correctParse :: (Char -> Bool) -> Parser String
-correctParse func = (:) <$> (satisfy func) <*> many (satisfy func)
-
--- | Return all between single quote as string
--- and don't skip any whitespace
--- "'bla bla privet'"
-singleQuote :: Parser String
-singleQuote = between (satisfy (== '\'')) (satisfy (=='\'')) (many (satisfy (/= '\'')))
-              {-lexeme $ -}
-
--- | Return all between double quote as string
--- and don't skip any whitespace
--- "bla bla privet"
-doubleQuote :: Parser String
-doubleQuote = between (satisfy (== '"')) (satisfy (=='"')) (many (satisfy (/= '"')))
-
--- | Parse identifier for template [a-zA-Z_0-9]+
--- such as "aaa" or
--- "privet123"
--- "a______a"
--- "1______1"
-patternIdentifier :: Parser String
-patternIdentifier = (:) <$> pattern <*> many pattern
-  where
-    pattern :: Parser Char
-    pattern = alphaNumChar <|> satisfy (== '_')
-
--- | Parser identifier for template [_a-zA-Z][a-zA-Z0-9_]+
--- for define assign link
-assignIdentifier :: Parser String
-assignIdentifier = (:) <$> wrapper letterChar <*> many (wrapper alphaNumChar)
-  where
-    wrapper :: Parser Char -> Parser Char
-    wrapper s = s <|> (satisfy (== '_'))
 
 -- | Parse such substring as
 -- Variable=smth
@@ -114,6 +60,7 @@ parserAssignValue =
       <|> (Number <$> L.decimal)
       <|> parserPointer
 
+-- | Combine all Statements in list
 parserCommands :: Parser [Statement]
 parserCommands = many (isEOL  *> (parserAssign <* isEOL))
 
@@ -122,26 +69,17 @@ parserCommands = many (isEOL  *> (parserAssign <* isEOL))
 parserPointer :: Parser AssignValue
 parserPointer = Pointer <$> (satisfy (== '$') *> patternIdentifier)
 
--- | call at first some parser and than \n or ;
-parserEndOfCommand :: Parser a -> Parser a
-parserEndOfCommand prs =
-  prs <* (isSpaceWithoutEOL *> eolParser)
-  where
-    eolParser :: Parser Char
-    eolParser = satisfy (\x -> x == '\n' || x == ';')
-
 -- | Function that replace all occurrences of pointer for string that equal such pointer
 resolveAssignValue :: Map.Map String String -> [AssignValue] -> String
-resolveAssignValue valueMap array = innerCall array
+resolveAssignValue valueMap = innerCall
   where
     innerCall :: [AssignValue] -> String
     innerCall (Number x:xs) = show x <> innerCall xs
     innerCall (SingleQuote x:xs) = x <> innerCall xs
     innerCall (Pointer x:xs) =
-      let resolver = Map.lookup x valueMap in
-        fromMaybe mempty resolver <> innerCall xs
-    innerCall (DoubleQuote x:xs) =
-      fromRight "" (parseDoubleQuote valueMap x)
+      let resolver = Map.lookup x valueMap
+       in fromMaybe mempty resolver <> innerCall xs
+    innerCall (DoubleQuote x:xs) = fromRight "" (parseDoubleQuote valueMap x)
     innerCall [] = ""
 
 -- | resolve inner of string in double quote
@@ -152,58 +90,12 @@ parseDoubleQuote valueMap s = do
   where
     innerParser :: Parser [AssignValue]
     innerParser = many $ parserPointer <|> (SingleQuote <$> dollar) <|> (SingleQuote <$> notDollar)
-
     dollar :: Parser String
-    dollar = correctParse (\x -> x == '$')
-
+    dollar = correctParse (== '$')
     notDollar :: Parser String
-    notDollar = correctParse (\x -> x /= '$')
+    notDollar = correctParse (/= '$')
 
 -- | Main function for all of this
 -- that create parse that take apart all commands of file
 parserFile :: Parser [Statement]
 parserFile = between isEOL (many (satisfy isSpace) *> eof) parserCommands
-
--- | Function that execute all scripts from directory recursive that end with *.sh
-executeDir :: FilePath -> IO()
-executeDir dir = do
-  files <- getDirectoryContents dir
-  iterateIO files
-  where
-    goIfDir :: FilePath -> IO(Bool)
-    goIfDir file = doesDirectoryExist $ dir <> file
-
-    goIfShFile :: FilePath -> IO(Bool)
-    goIfShFile file = do
-      v <- doesFileExist $ dir <> file
-      if v
-      then
-        if endswith ".sh" file
-        then return True
-        else return False
-      else return False
-
-    iterateIO :: [FilePath] -> IO()
-    iterateIO (x:xs) = do
-      if startswith "." x
-        then iterateIO xs
-        else inner(x:xs)
-      where
-        inner (x:xs) = do
-          result <- goIfDir x
-          case result of
-            True -> (executeDir $  dir <> x) *> iterateIO xs
-            False -> (executeFile $ dir <> x) *> iterateIO xs
-
-    iterateIO [] = putStrLn $ "end of dir" <> dir
-
-    executeFile :: FilePath -> IO ()
-    executeFile file = do
-      content <- readFile $ file
-      let content' = content <> "\n"
-      let value = runParser parserFile "" content'
-      print value
-      case value of
-        Left _ -> error "errr"
-        Right _ -> return ()
--- executeDir "/home/nikita/IdeaProjects/haskell-itmo-2019-hw3/task1/"

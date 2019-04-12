@@ -14,16 +14,11 @@ data MachineEnvironment = MachineEnvironment
   {
     declaredValues :: Map.Map String String
     , lastArguments :: String
+    , currentDirectory :: FilePath
   } deriving Show
 
 
 innerMachine :: [Statement] -> ReaderT MachineEnvironment IO (MachineEnvironment, ())
-{-innerMachine (Seq x:xs) = do
-  currentMap <- ask
-  (innerDeclare, unit) <- local (const currentMap) (innerMachine x)
-  let mergeMap = Map.union (declaredValues innerDeclare) (declaredValues currentMap)
-  local (const MachineEnvironment{declaredValues=mergeMap,lastArguments=""}) (innerMachine xs)
--}
 innerMachine (AssignRaw ptr value : xs) = do
   currentState <- ask
   let resolver = resolveAssignValue (declaredValues currentState) value
@@ -72,13 +67,12 @@ block1Execute env
            case content of
              Left _ -> error "ti chto ohuel?!"
              Right statements ->
-               let arguments = addValuesToMap $ tail env in
-               let call =
-                         runReaderT
-                           (innerMachine statements)
-                           MachineEnvironment {declaredValues = arguments, lastArguments = ""}
-                    in do (state, _) <- call
-                          print state
+               let arguments = Map.insert "0" scriptPath (addValuesToMap $ tail env) in
+               let call = runReaderT (innerMachine statements)
+                          MachineEnvironment {declaredValues = arguments, lastArguments = ""} in
+                    do
+                      (state, _) <- call
+                      print state
 
 call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/blia.sh"]
 
