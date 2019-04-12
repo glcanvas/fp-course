@@ -57,12 +57,12 @@ test-suite hw3-test
                       , hw3
                       , hspec
                       , mtl
-                                            , transformers
-                                            , megaparsec
-                                            , containers
-                                            , microlens
-                                            , microlens-th
-                                            , lens
-                                            , exceptions
-                                            , parser-combinators
+                      , transformers
+                      , megaparsec
+                      , containers
+                      , microlens
+                      , microlens-th
+                      , lens
+                      , exceptions
+                      , parser-combinators
   default-language:   Haskell2010

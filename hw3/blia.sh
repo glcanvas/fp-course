@@ -1,7 +1,4 @@
-
-
-   ccc="a"'a''b''c'
-
-   ccc="a"'a''b''c' ;
-   ccc="a"'a''b''c' ;
-
+a="a"
+b="b"
+c="c"
+d='d'$a$b$c;

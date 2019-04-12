@@ -52,6 +52,10 @@ isSpaceWithoutEOL = many (satisfy (\x -> isSpace x && x /= '\n'))
 isEOL :: Parser String
 isEOL = many (satisfy  (=='\n'))
 
+-- | Function that correct parse not empty string for common template
+correctParse :: (Char -> Bool) -> Parser String
+correctParse func = (:) <$> (satisfy func) <*> many (satisfy func)
+
 -- | Return all between single quote as string
 -- and don't skip any whitespace
 -- "'bla bla privet'"
@@ -128,7 +132,7 @@ parserEndOfCommand prs =
 
 -- | Function that replace all occurrences of pointer for string that equal such pointer
 resolveAssignValue :: Map.Map String String -> [AssignValue] -> String
-resolveAssignValue valueMap array = undefined
+resolveAssignValue valueMap array = innerCall array
   where
     innerCall :: [AssignValue] -> String
     innerCall (Number x:xs) = show x <> innerCall xs
@@ -138,6 +142,7 @@ resolveAssignValue valueMap array = undefined
         fromMaybe mempty resolver <> innerCall xs
     innerCall (DoubleQuote x:xs) =
       fromRight "" (parseDoubleQuote valueMap x)
+    innerCall [] = ""
 
 -- | resolve inner of string in double quote
 parseDoubleQuote :: Map.Map String String -> String -> Either (ParseErrorBundle String Void) String
@@ -146,22 +151,20 @@ parseDoubleQuote valueMap s = do
   return $ resolveAssignValue valueMap v
   where
     innerParser :: Parser [AssignValue]
-    innerParser = many $ parserAsString <|> (SingleQuote `fmap` many (satisfy (/= '$')))
+    innerParser = many $ parserPointer <|> (SingleQuote <$> dollar) <|> (SingleQuote <$> notDollar)
 
-    parserAsString :: Parser AssignValue
-    parserAsString = parserPointer <|> (SingleQuote `fmap` (: []) <$> satisfy (== '$'))
+    dollar :: Parser String
+    dollar = correctParse (\x -> x == '$')
+
+    notDollar :: Parser String
+    notDollar = correctParse (\x -> x /= '$')
 
 -- | Main function for all of this
 -- that create parse that take apart all commands of file
 parserFile :: Parser [Statement]
 parserFile = between isEOL (many (satisfy isSpace) *> eof) parserCommands
 
-gggg = runParser parserAssignValue "hmm"
-qweqwe = runParser parserAssignValue "sdf" "asdsada"
---"$adsa$bloa'aaasd'123412$asdasd'asd'\n"
-
-
--- | Function that execute all scripts from directory that end with *.sh
+-- | Function that execute all scripts from directory recursive that end with *.sh
 executeDir :: FilePath -> IO()
 executeDir dir = do
   files <- getDirectoryContents dir
@@ -187,11 +190,10 @@ executeDir dir = do
         else inner(x:xs)
       where
         inner (x:xs) = do
-        putStrLn x
-        result <- goIfDir x
-        if result
-        then (executeDir $  dir <> x) *> iterateIO xs
-        else (executeFile $ dir <> x) *> iterateIO xs
+          result <- goIfDir x
+          case result of
+            True -> (executeDir $  dir <> x) *> iterateIO xs
+            False -> (executeFile $ dir <> x) *> iterateIO xs
 
     iterateIO [] = putStrLn $ "end of dir" <> dir
 
@@ -204,4 +206,4 @@ executeDir dir = do
       case value of
         Left _ -> error "errr"
         Right _ -> return ()
--- executeDir "/home/nikita/IdeaProjects/haskell-itmo-2019-hw3/task1"
+-- executeDir "/home/nikita/IdeaProjects/haskell-itmo-2019-hw3/task1/"

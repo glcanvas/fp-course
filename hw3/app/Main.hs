@@ -6,7 +6,7 @@ import Block1
 main :: IO ()
 main = do
   args <- getArgs
-  putStrLn $ head args
+  block1Execute args
 
 
 
