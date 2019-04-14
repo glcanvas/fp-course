@@ -25,7 +25,7 @@ parserAssign :: Parser Statement
 parserAssign = do
   isSpaceWithoutEOL
   variable <- assignIdentifier
-  satisfy (== '=')
+  single '='
   AssignRaw variable <$> parserEndOfCommand parserAssignValue
 
 -- | Wrap parsed string in one of "AssignValue"
@@ -40,13 +40,12 @@ oneOfExpr :: Parser AssignValue
 oneOfExpr = try (SingleQuote <$> singleQuote)
       <|> try (DoubleQuote <$> doubleQuote)
       <|> try (SingleQuote <$> aLotOfSheet) --patternIdentifier
-      <|> try (Number <$> L.decimal)
       <|> parserPointer
 
 -- | Parser pointer in bash such as
 -- $hehmdem
 parserPointer :: Parser AssignValue
-parserPointer = Pointer <$> (satisfy (== '$') *> patternIdentifier)
+parserPointer = Pointer <$> (single '$' *> patternIdentifier)
 
 -- | resolve inner of string in double quote
 parseDoubleQuote :: Map.Map String String -> String -> Either (ParseErrorBundle String Void) String
@@ -55,7 +54,7 @@ parseDoubleQuote valueMap s = do
   return $ resolveAssignValue valueMap v
   where
     innerParser :: Parser [AssignValue]
-    innerParser = many $ try parserPointer <|> try (SingleQuote <$> dollar) <|> (SingleQuote <$> notDollar)
+    innerParser = many $ try parserPointer <|> try (SingleQuote <$> aLotOfSheet) -- <|> (SingleQuote <$> notDollar)
     dollar :: Parser String
     dollar = correctParse (== '$')
     notDollar :: Parser String
@@ -66,10 +65,9 @@ resolveAssignValue :: Map.Map String String -> [AssignValue] -> String
 resolveAssignValue valueMap = innerCall
   where
     innerCall :: [AssignValue] -> String
-    innerCall (Number x:xs) = show x <> innerCall xs
     innerCall (SingleQuote x:xs) = x <> innerCall xs
     innerCall (Pointer x:xs) =
       let resolver = Map.lookup x valueMap
        in fromMaybe mempty resolver <> innerCall xs
-    innerCall (DoubleQuote x:xs) = fromRight "" (parseDoubleQuote valueMap x)
+    innerCall (DoubleQuote x:xs) = fromRight "" (parseDoubleQuote valueMap x) <> innerCall xs
     innerCall [] = ""

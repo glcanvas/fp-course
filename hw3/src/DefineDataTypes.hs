@@ -4,9 +4,7 @@ module DefineDataTypes (
   , InnerCommand(..)
 ) where
 
-data Statement = Seq [Statement]
-  | AssignRaw String [AssignValue]
-  | Assign String String
+data Statement = AssignRaw String [AssignValue]
   | CustomCommand InnerCommand
   deriving Show
 
@@ -15,11 +13,10 @@ data InnerCommand = Read {readArguments :: [String]}
   | Echo {echoArguments :: [[AssignValue]]}
   | Pwd
   | Cd {cdArgument :: FilePath}
-  | Exit
+  | Exit {exitCode :: String}
    deriving Show
 
-data AssignValue = Number Int
-  | SingleQuote String
+data AssignValue = SingleQuote String
   | DoubleQuote String
   | Pointer String
   deriving (Show, Eq)

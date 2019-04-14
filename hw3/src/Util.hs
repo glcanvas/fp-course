@@ -3,7 +3,6 @@
 module Util (
     parserFile
   , parserCommands
-  , bek
 ) where
 
 import Text.Megaparsec
