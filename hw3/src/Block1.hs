@@ -6,15 +6,22 @@ import Control.Monad.Reader
 import Data.Maybe(fromMaybe)
 import Data.Void
 import Text.Megaparsec
-import Util
 import Data.Char(ord)
 import System.Environment(getArgs)
 
+import Util
+import UtilInnerCommands
+import DefineDataTypes
+--import UtilParserBase
+import UtilAssignValues
+
+import Control.Applicative.Combinators
 data MachineEnvironment = MachineEnvironment
   {
     declaredValues :: Map.Map String String
     , lastArguments :: String
     , currentDirectory :: FilePath
+    , lastCommand :: String
   } deriving Show
 
 
@@ -22,8 +29,6 @@ innerMachine :: [Statement] -> ReaderT MachineEnvironment IO (MachineEnvironment
 innerMachine (AssignRaw ptr value : xs) = do
   currentState <- ask
   let resolver = resolveAssignValue (declaredValues currentState) value
-  lift $ print currentState
-  lift $ print (ptr <> "=" <> resolver)
   let updMap = Map.insert ptr resolver (declaredValues currentState)
   local (const currentState{declaredValues = updMap}) (innerMachine xs)
 
@@ -34,7 +39,6 @@ innerMachine (Assign ptr value : xs) = do
 
 innerMachine [] = do
   v <- ask
-  lift $ print v
   return (v, ())
 
 readFileParseToStatement :: FilePath -> IO (Either (ParseErrorBundle String Void) [Statement])
@@ -62,17 +66,36 @@ block1Execute :: [String] -> IO ()
 block1Execute env
   | null env = error "ti chto ohuel?!"
   | otherwise =
-    let scriptPath = head env
-     in do content <- readFileParseToStatement scriptPath
-           case content of
-             Left _ -> error "ti chto ohuel?!"
-             Right statements ->
-               let arguments = Map.insert "0" scriptPath (addValuesToMap $ tail env) in
-               let call = runReaderT (innerMachine statements)
-                          MachineEnvironment {declaredValues = arguments, lastArguments = ""} in
+    let scriptPath = head env in
+      do
+        content <- readFileParseToStatement scriptPath
+        case content of
+          Left _ -> error "ti chto ohuel?!"
+          Right statements ->
+            let arguments = Map.insert "0" scriptPath (addValuesToMap $ tail env) in
+            let call = runReaderT (innerMachine statements)
+                  MachineEnvironment {declaredValues = arguments, lastArguments = "", currentDirectory = "" , lastCommand = ""} in
                     do
                       (state, _) <- call
                       print state
 
+               --print statements
 call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/blia.sh"]
 
+type Parser = Parsec Void String
+
+lft :: Parser Char
+lft = satisfy (== 'a') *> satisfy (== 'b')
+
+rgh :: Parser Char
+rgh =  satisfy (== 'a') *> satisfy (== 'c')
+
+both :: Parser Char
+both = try lft <|> try rgh
+
+
+
+open :: IO ()
+open = do
+  v <- readFile "~/IdeaProjects/fp-homework-templates/hw3/README.md"
+  putStrLn v

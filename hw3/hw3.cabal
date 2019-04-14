@@ -23,6 +23,9 @@ library
                       , Util
                       , UtilParserBase
                       , UtilTestScripts
+                      , DefineDataTypes
+                      , UtilAssignValues
+                      , UtilInnerCommands
   other-modules:      Paths_hw3
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5

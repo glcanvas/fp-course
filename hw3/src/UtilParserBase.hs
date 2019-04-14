@@ -9,13 +9,13 @@ module UtilParserBase (
   , patternIdentifier
   , assignIdentifier
   , parserEndOfCommand
+  , aLotOfSheet
 ) where
 
-
-import Data.Void
-import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
-import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar)
+import Text.Megaparsec
+import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar, string)
+import Data.Void
 import Data.Char(isSpace)
 
 -- | Define Parser type that need String and Error is Void
@@ -62,7 +62,32 @@ patternIdentifier :: Parser String
 patternIdentifier = (:) <$> pattern <*> many pattern
   where
     pattern :: Parser Char
-    pattern = alphaNumChar <|> satisfy (== '_')
+    pattern = (try alphaNumChar) <|> satisfy (== '_')
+
+-- | Values that writes after assign character '=' and there isn't in single or double quotes
+aLotOfSheet :: Parser String
+aLotOfSheet = (:) <$> innerPattern <*> many innerPattern
+  where
+  innerPattern :: Parser Char
+  innerPattern = (try alphaNumChar)
+                  <|> try ((\x-> x!!1) <$> (string "\\$")) -- will print only $
+                  <|> try ((\x -> head x) <$> (string "\\\\")) -- will print only \
+                  <|> satisfy (\x ->
+                            x /= ';'
+                         && x /= '$'
+
+                         && x /= '\''
+                         && x /= '"'
+                         && x /= '`'
+                         && x /= '|'
+                         && x /= '('
+                         && x /=')'
+                         && x /= '\\'
+                         && x /= '>'
+                         && x /= '<'
+                         && x /= '{'
+                         && x /= '}'
+                         && not (isSpace x)) -- can't be without quotes
 
 -- | Parser identifier for template [_a-zA-Z][a-zA-Z0-9_]+
 -- for define assign link
@@ -70,7 +95,7 @@ assignIdentifier :: Parser String
 assignIdentifier = (:) <$> wrapper letterChar <*> many (wrapper alphaNumChar)
   where
     wrapper :: Parser Char -> Parser Char
-    wrapper s = s <|> (satisfy (== '_'))
+    wrapper s = (try s) <|> (satisfy (== '_'))
 
 -- | call at first some parser and than \n or ;
 parserEndOfCommand :: Parser a -> Parser a
