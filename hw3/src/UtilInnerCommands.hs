@@ -35,10 +35,10 @@ parserEcho = parserEndOfCommand $ isSpaceWithoutEOL *> innerParser
     innerParser = (string "echo" *> isSpaceWithoutEOL) *> (try second <|> try first )
 
     first :: Parser InnerCommand
-    first = EchoWithout <$> many singleArgument
+    first = Echo <$> many singleArgument
 
     second :: Parser InnerCommand
-    second = needDelim *> (Echo <$> many singleArgument)
+    second = needDelim *> (EchoWithout <$> many singleArgument)
 
     needDelim :: Parser String
     needDelim = isSpaceWithoutEOL *> (string "-n" <* isSpaceWithoutEOL)

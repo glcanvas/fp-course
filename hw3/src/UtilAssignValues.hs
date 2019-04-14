@@ -13,7 +13,7 @@ import Data.Void
 import Text.Megaparsec
 import Data.Maybe (fromMaybe)
 import Data.Either (fromRight)
-
+import Text.Megaparsec.Char (string)
 
 import UtilParserBase
 import DefineDataTypes
@@ -54,11 +54,13 @@ parseDoubleQuote valueMap s = do
   return $ resolveAssignValue valueMap v
   where
     innerParser :: Parser [AssignValue]
-    innerParser = many $ try parserPointer <|> try (SingleQuote <$> aLotOfSheet) -- <|> (SingleQuote <$> notDollar)
-    dollar :: Parser String
-    dollar = correctParse (== '$')
-    notDollar :: Parser String
-    notDollar = correctParse (/= '$')
+    innerParser = many $ try parserPointer <|> SingleQuote `fmap` ((:) <$> innerQuote <*> many innerQuote)
+
+    innerQuote :: Parser Char
+    innerQuote = try ((!!1) <$> string "\\$")
+             <|> try (head <$> string "\\\\")
+             <|> try ((!!1) <$> string "\\\"")
+             <|> anySingle
 
 -- | Function that replace all occurrences of pointer for string that equal such pointer
 resolveAssignValue :: Map.Map String String -> [AssignValue] -> String

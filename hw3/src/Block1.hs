@@ -44,11 +44,24 @@ innerMachine (CustomCommand cmd:xs) = innerMatch cmd
       let updMap = foldr (\(k, v) b -> Map.insert k v b) (currentState^.declaredValues) zipped
       local (declaredValues.~updMap) (innerMachine xs)
 
-    innerMatch (Echo args) = undefined
-    innerMatch (EchoWithout args) = undefined
+    innerMatch (Echo args) = do
+      currentState <- ask
+      --lift $ putStrLn "blia"
+      lift $ putStrLn (commonPathEcho currentState args)
+      local (const currentState) (innerMachine xs)
+
+    innerMatch (EchoWithout args) = do
+      currentState <- ask
+      lift $ putStr (commonPathEcho currentState args)
+      local (const currentState) (innerMachine xs)
     --innerMachine Pwd = undefined
     --innerMachine (Cd path) = undefined
     --innerMachine (Exit code) = putStrLn ("exit with code" <> code)
+
+    commonPathEcho :: MachineEnvironment -> [[AssignValue]] -> String
+    commonPathEcho me args =
+      let resolve = map (resolveAssignValue (me^.declaredValues)) args in
+        foldl (<>) "" $ map (<> " ") resolve
 
 
 
@@ -120,6 +133,8 @@ block1Execute env
                       do
                         (state, _) <- call
                         print state
-
-              --print statements
-call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/blia.sh"]
+                        putStrLn ""
+                        putStrLn ""
+                        putStrLn ""
+                        print statements
+call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/example.sh"]

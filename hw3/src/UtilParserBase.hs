@@ -9,6 +9,7 @@ module UtilParserBase (
   , assignIdentifier
   , parserEndOfCommand
   , aLotOfSheet
+  , qwert
 ) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -46,8 +47,10 @@ doubleQuote :: Parser String
 doubleQuote = between (single '"') (single '"') (many innerSatisfy)
   where
     innerSatisfy :: Parser Char
-    innerSatisfy = (try $ (\x -> x!!1) <$> string "\\\"") <|> satisfy (/= '"')
+    innerSatisfy = (try $ (!!1) <$> string "\\\"") <|> try (head <$> string "\\\\") <|> satisfy (/= '"')
 
+qwert :: Parser Char
+qwert = (try $ (\x -> x!!1) <$> string "\\\"") <|> satisfy (/= '"')
 -- | Parse identifier for template [a-zA-Z_0-9]+
 -- such as "aaa" or
 -- "privet123"
@@ -65,9 +68,9 @@ aLotOfSheet = (:) <$> innerPattern <*> many innerPattern
   where
   innerPattern :: Parser Char
   innerPattern = (try alphaNumChar)
-                  <|> try ((\x-> x!!1) <$> (string "\\$")) -- will print only $
-                  <|> try ((\x -> head x) <$> (string "\\\\")) -- will print only \
-                  <|> try ((\x -> x!!1) <$> (string "\\\"")) -- will print only "
+                  <|> try ((!!1) <$> string "\\$") -- will print only $
+                  <|> try (head <$> string "\\\\") -- will print only \
+                  <|> try ((!!1) <$> string "\\\"") -- will print only "
                   <|> satisfy (\x ->
                             x /= ';'
                          && x /= '$'
