@@ -9,6 +9,7 @@ import Data.Void
 import Text.Megaparsec
 import Data.Char(ord)
 import System.Environment(getArgs)
+import System.Directory
 import Control.Lens
 import Data.List
 
@@ -46,7 +47,6 @@ innerMachine (CustomCommand cmd:xs) = innerMatch cmd
 
     innerMatch (Echo args) = do
       currentState <- ask
-      --lift $ putStrLn "blia"
       lift $ putStrLn (commonPathEcho currentState args)
       local (const currentState) (innerMachine xs)
 
@@ -54,17 +54,23 @@ innerMachine (CustomCommand cmd:xs) = innerMatch cmd
       currentState <- ask
       lift $ putStr (commonPathEcho currentState args)
       local (const currentState) (innerMachine xs)
-    --innerMachine Pwd = undefined
-    --innerMachine (Cd path) = undefined
-    --innerMachine (Exit code) = putStrLn ("exit with code" <> code)
+
+    innerMatch Pwd = do
+      currentState <- ask
+      lift $ putStrLn (currentState^.currentDirectory)
+      local (const currentState) (innerMachine xs)
+
+    innerMatch (Exit code) = do
+      currentState <- ask
+      lift $ putStrLn ("exit with code " <> code)
+      local (const currentState) (innerMachine [])
+
+    innerMatch (Cd path) = undefined
 
     commonPathEcho :: MachineEnvironment -> [[AssignValue]] -> String
     commonPathEcho me args =
       let resolve = map (resolveAssignValue (me^.declaredValues)) args in
         foldl (<>) "" $ map (<> " ") resolve
-
-
-
 
 innerMachine [] = do
   v <- ask
@@ -86,7 +92,6 @@ correctnessZip keys values
       let defaultValues = replicate diff mempty in
         zip keys (values <> defaultValues)
   | otherwise = zip keys values
-
 {-
 correctnessZip ["a", "b", "c"] ["x", "y", "z"]
 correctnessZip ["a", "b", "c"] ["x"]
@@ -124,12 +129,13 @@ block1Execute env
     let scriptPath = head env in
       do
         content <- readFileParseToStatement scriptPath
+        dir <- getCurrentDirectory
         case content of
           Left _ -> error "fail while parse script"
           Right statements ->
             let arguments = Map.insert "0" scriptPath (addValuesToMap $ tail env) in
               let call = runReaderT (innerMachine statements)
-                    MachineEnvironment {_declaredValues = arguments, _currentDirectory = ""} in
+                    MachineEnvironment {_declaredValues = arguments, _currentDirectory = dir} in
                       do
                         (state, _) <- call
                         print state

@@ -1,6 +1,3 @@
-a=\"
-b="aaaa"
-c="\""
-x="bek"
-d=" $x a "
-echo $d
+a="$(ls)"
+b=$(ls)
+c="$(echo "bek" "kek")"

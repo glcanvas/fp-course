@@ -51,6 +51,7 @@ doubleQuote = between (single '"') (single '"') (many innerSatisfy)
 
 qwert :: Parser Char
 qwert = (try $ (\x -> x!!1) <$> string "\\\"") <|> satisfy (/= '"')
+
 -- | Parse identifier for template [a-zA-Z_0-9]+
 -- such as "aaa" or
 -- "privet123"

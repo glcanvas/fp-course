@@ -3,19 +3,19 @@ module UtilInnerCommands (
    , parserEcho
    , parserPwd
    , parserCd
-   --, second
+   , parserExit
    --, singleArgument
+   , parserPath
 ) where
 
 import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar, string)
 import Text.Megaparsec
 import Data.Char(isSpace)
+import qualified Text.Megaparsec.Char.Lexer as L
 
 import UtilParserBase
 import UtilAssignValues(oneOfExpr)
 import DefineDataTypes
---import Control.Applicative
-
 
 -- | Inner command that read arguments from console
 parserRead :: Parser InnerCommand
@@ -54,8 +54,32 @@ parserPwd :: Parser InnerCommand
 parserPwd = parserEndOfCommand $ isSpaceWithoutEOL *> (Pwd <$ string "pwd")
 
 -- | simple parse cd such that satisfy until first whitespace
+-- I'm suppose that way may be either full either relative
 parserCd :: Parser InnerCommand
 parserCd = parserEndOfCommand $ isSpaceWithoutEOL *> (Cd <$> (string "cd" *> parserPath))
+
+parserPath :: Parser [AssignValue]
+parserPath = undefined -- isSpaceWithoutEOL *> some (satisfy (not . isSpace))
+
+
+{-
+"./" -- loop back
+"../" -- dir
+split by "/"
+/
+.
+..
+\
+\"
+./"privet "\ kek
+runParser parserPath "" "   ../   / "
+""
+-}
+
+
+-- | simple parse exit such satisfy template such as "exit <exit code>"
+parserExit :: Parser InnerCommand
+parserExit = parserEndOfCommand $ isSpaceWithoutEOL *> (Exit <$> (string "exit" *> parserExitCode))
   where
-    parserPath :: Parser FilePath
-    parserPath = isSpaceWithoutEOL *> some (satisfy (not . isSpace))
+    parserExitCode :: Parser String
+    parserExitCode = isSpaceWithoutEOL *> (show <$> L.decimal)

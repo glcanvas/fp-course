@@ -21,6 +21,7 @@ parserCommands = many (isEOL  *> innerCommand <* isEOL)
                  <|> try (CustomCommand <$> parserEcho)
                  <|> try (CustomCommand <$> parserPwd)
                  <|> try (CustomCommand <$> parserCd)
+                 <|> try (CustomCommand <$> parserExit)
                  <|> parserAssign
 
 -- | Main function for all of this
