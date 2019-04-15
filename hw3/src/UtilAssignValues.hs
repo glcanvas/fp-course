@@ -60,7 +60,7 @@ parseDoubleQuote valueMap s = do
     innerQuote = try ((!!1) <$> string "\\$")
              <|> try (head <$> string "\\\\")
              <|> try ((!!1) <$> string "\\\"")
-             <|> anySingle
+             <|> satisfy (/= '$')
 
 -- | Function that replace all occurrences of pointer for string that equal such pointer
 resolveAssignValue :: Map.Map String String -> [AssignValue] -> String

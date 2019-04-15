@@ -1,6 +1,6 @@
-a=" hello"
-b="\'"
+a=\"
+b="aaaa"
 c="\""
-d="\$"
-f="         "
-e="\\"
+x="bek"
+d=" $x a "
+echo $d

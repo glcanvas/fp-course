@@ -137,4 +137,4 @@ block1Execute env
                         putStrLn ""
                         putStrLn ""
                         print statements
-call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/example.sh"]
+call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/example.sh", "x", "y"]
