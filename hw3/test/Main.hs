@@ -12,8 +12,7 @@ import UtilTests (blockUtilTests)
 
 -- | combine all tests from blocks
 main :: IO ()
-main = do
-  blockUtilTests
+main = blockUtilTests
   --queueMain
   --block1Main
   --block2Main

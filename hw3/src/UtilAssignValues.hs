@@ -1,10 +1,10 @@
 module UtilAssignValues (
     parserAssign
   , parserAssignValue
-  , oneOfExpr
+  , assignedExpression
   , parserPointer
-  , parseDoubleQuote
-  , resolveAssignValue
+  , briefResolveAssignValue
+  , briefResolveCommands
 ) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -17,6 +17,7 @@ import Text.Megaparsec.Char (string)
 
 import UtilParserBase
 import DefineDataTypes
+import UtilCommands
 
 -- | Parse such substring as
 -- Variable=smth
@@ -33,43 +34,44 @@ parserAssign = do
 -- >>> $a$b$c"asdaasd"'adadsa'
 -- [Pointer a, Pointer b ...]
 parserAssignValue :: Parser [AssignValue]
-parserAssignValue = some oneOfExpr
+parserAssignValue = some assignedExpression
 
--- | Function that parse one of substring that satisfy current parametrs
-oneOfExpr :: Parser AssignValue
-oneOfExpr = try (SingleQuote <$> singleQuote)
-      <|> try (DoubleQuote <$> doubleQuote)
-      <|> try (SingleQuote <$> aLotOfSheet) --patternIdentifier
-      <|> parserPointer
-
--- | Parser pointer in bash such as
--- $hehmdem
-parserPointer :: Parser AssignValue
-parserPointer = Pointer <$> (single '$' *> patternIdentifier)
-
--- | resolve inner of string in double quote
-parseDoubleQuote :: Map.Map String String -> String -> Either (ParseErrorBundle String Void) String
-parseDoubleQuote valueMap s = do
-  v <- runParser innerParser "" s
-  return $ resolveAssignValue valueMap v
+-- | Function that resolve only pointers, double quotes and assign commands
+-- in order to get array only consist with single pointer and functions that necessary evaluate
+briefResolveAssignValue :: Map.Map String String -> [AssignValue] -> [AssignValue]
+briefResolveAssignValue valueMap = innerCall
   where
-    innerParser :: Parser [AssignValue]
-    innerParser = many $ try parserPointer <|> SingleQuote `fmap` ((:) <$> innerQuote <*> many innerQuote)
-
-    innerQuote :: Parser Char
-    innerQuote = try ((!!1) <$> string "\\$")
-             <|> try (head <$> string "\\\\")
-             <|> try ((!!1) <$> string "\\\"")
-             <|> satisfy (/= '$')
-
--- | Function that replace all occurrences of pointer for string that equal such pointer
-resolveAssignValue :: Map.Map String String -> [AssignValue] -> String
-resolveAssignValue valueMap = innerCall
-  where
-    innerCall :: [AssignValue] -> String
-    innerCall (SingleQuote x:xs) = x <> innerCall xs
+    innerCall :: [AssignValue] -> [AssignValue]
+    innerCall (SingleQuote x:xs) = SingleQuote x : innerCall xs
     innerCall (Pointer x:xs) =
-      let resolver = Map.lookup x valueMap
-       in fromMaybe mempty resolver <> innerCall xs
-    innerCall (DoubleQuote x:xs) = fromRight "" (parseDoubleQuote valueMap x) <> innerCall xs
-    innerCall [] = ""
+      let resolver = Map.lookup x valueMap in
+        (SingleQuote $ fromMaybe mempty resolver) : innerCall xs
+    innerCall (DoubleQuote x:xs) = briefResolveAssignValue valueMap x <> innerCall xs
+    innerCall (AssignCommand x:xs) = (AssignCommand $ briefResolveCommands valueMap x) : innerCall xs
+    innerCall [] = mempty
+
+-- | the same as upper function
+briefResolveCommands :: Map.Map String String -> [ShellCommands] -> [ShellCommands]
+briefResolveCommands valueMap = innerCall
+  where
+    innerCall :: [ShellCommands] -> [ShellCommands]
+    innerCall (InnerCommandConst cmd:xs) = briefResolveInnerCommand valueMap cmd : innerCall xs
+    innerCall (ExternalCommandConst cmd:xs) = briefResolveExternalCommand valueMap cmd : innerCall xs
+    innerCall [] = mempty
+
+-- | the same as upper function
+briefResolveInnerCommand :: Map.Map String String -> InnerCommand -> ShellCommands
+briefResolveInnerCommand _ (Read args) = InnerCommandConst $ Read args
+briefResolveInnerCommand valueMap (EchoWithout args) = InnerCommandConst $ EchoWithout (briefResolveEcho valueMap args)
+briefResolveInnerCommand valueMap (Echo args) = InnerCommandConst $ Echo (briefResolveEcho valueMap args)
+briefResolveInnerCommand _ Pwd = InnerCommandConst Pwd
+briefResolveInnerCommand valueMap (Cd way) = InnerCommandConst $ Cd (briefResolveAssignValue valueMap way)
+briefResolveInnerCommand _ (Exit key) = InnerCommandConst $ Exit key
+
+briefResolveExternalCommand :: Map.Map String String -> ExternalCommand -> ShellCommands
+briefResolveExternalCommand valueMap (ExternalConst name args) =
+  ExternalCommandConst $ ExternalConst name (briefResolveAssignValue valueMap args)
+
+-- | The same as all upper function
+briefResolveEcho :: Map.Map String String -> [[AssignValue]] -> [[AssignValue]]
+briefResolveEcho valueMap = map (briefResolveAssignValue valueMap)

@@ -8,98 +8,115 @@ import Data.Maybe(fromMaybe)
 import Data.Void
 import Text.Megaparsec
 import Data.Char(ord)
+
 import System.Environment(getArgs)
 import System.Directory
+import System.Process
+import System.Exit
+
 import Control.Lens
 import Data.List
 
 import DefineDataTypes
 import UtilAssignValues
-import UtilInnerCommands
 import Util
---import UtilParserBase
 
 import Control.Applicative.Combinators
-data MachineEnvironment = MachineEnvironment
-  {
-    _declaredValues :: Map.Map String String
-    , _currentDirectory :: FilePath
-  } deriving Show
 
 makeLenses ''MachineEnvironment
 
+concatBriefResolvedValues :: [AssignValue] -> ReaderT MachineEnvironment IO (MachineEnvironment, ())
+concatBriefResolvedValues values = undefined
+
 innerMachine :: [Statement] -> ReaderT MachineEnvironment IO (MachineEnvironment, ())
+innerMachine [] = ask >>= (\v -> return (v, ()))
+
 innerMachine (AssignRaw ptr value:xs) = do
   currentState <- ask
-  let resolver = resolveAssignValue (currentState^.declaredValues) value
-  let updMap = Map.insert ptr resolver (currentState^.declaredValues)
-  local (declaredValues.~updMap) (innerMachine xs)
+  -- resolver consist only "SingleQuote" and brief resolved "ShellCommands"
+  let resolver = briefResolveAssignValue (currentState^.declaredValues) value
+  lift $ print "============="
+  lift $ print resolver
+  innerCall <- lift $ hardResolveAssignValue currentState resolver
+  lift $ putStrLn innerCall
+  --let updMap = Map.insert ptr resolver (currentState^.declaredValues)
+  local ({-declaredValues.~updMap-}const currentState) (innerMachine xs)
 
-innerMachine (CustomCommand cmd:xs) = innerMatch cmd
+
+
+hardResolveAssignValue :: MachineEnvironment -> [AssignValue] -> IO String
+hardResolveAssignValue me (SingleQuote x:xs) = pure x <> hardResolveAssignValue me xs
+hardResolveAssignValue me (AssignCommand cmd:xs) =
+  foldl (<>) (pure mempty) (map innerCall cmd) <> hardResolveAssignValue me xs
   where
-    innerMatch :: InnerCommand -> ReaderT MachineEnvironment IO (MachineEnvironment, ())
-    innerMatch (Read args) = do
+    innerCall :: ShellCommands -> IO String
+    innerCall = hardResolveShellCommand me
+
+hardResolveAssignValue _ [] = pure mempty
+
+hardResolveShellCommand :: MachineEnvironment -> ShellCommands -> IO String
+hardResolveShellCommand me (InnerCommandConst cmd) = pure "INNER"
+hardResolveShellCommand me (ExternalCommandConst cmd) = do
+  v <- mapM (\x -> hardResolveAssignValue me [x]) (externalArguments cmd)
+  (exCode, out, err) <- readCreateProcessWithExitCode (proc (externalName cmd) v) ""
+  putStrLn out
+  putStrLn (show exCode)
+  putStrLn err
+  case exCode of
+    ExitSuccess -> pure out
+    ExitFailure code -> pure (show code)
+
+isCommandExternal :: String -> IO Bool
+isCommandExternal cmd = do
+  (exCode, out, err) <- readCreateProcessWithExitCode (proc "ls" [cmd]) ""
+  case exCode of
+    ExitFailure _ -> pure False
+    ExitSuccess -> pure True
+
+{-
+innerMachine (CustomCommand (InnerCommandConst cmd):xs) = resolveInnerCommand cmd
+  where
+    resolveInnerCommand :: InnerCommand -> ReaderT MachineEnvironment IO (MachineEnvironment, ())
+    resolveInnerCommand (Read args) = do
       currentState <- ask
       readString <- lift getLine
       let zipped = correctnessZip args (words readString)
       let updMap = foldr (\(k, v) b -> Map.insert k v b) (currentState^.declaredValues) zipped
       local (declaredValues.~updMap) (innerMachine xs)
 
-    innerMatch (Echo args) = do
+    resolveInnerCommand (Echo args) = do
       currentState <- ask
       lift $ putStrLn (commonPathEcho currentState args)
       local (const currentState) (innerMachine xs)
 
-    innerMatch (EchoWithout args) = do
+    resolveInnerCommand (EchoWithout args) = do
       currentState <- ask
       lift $ putStr (commonPathEcho currentState args)
       local (const currentState) (innerMachine xs)
 
-    innerMatch Pwd = do
+    resolveInnerCommand Pwd = do
       currentState <- ask
       lift $ putStrLn (currentState^.currentDirectory)
       local (const currentState) (innerMachine xs)
 
-    innerMatch (Exit code) = do
+    resolveInnerCommand (Exit code) = do
       currentState <- ask
       lift $ putStrLn ("exit with code " <> code)
       local (const currentState) (innerMachine [])
 
-    innerMatch (Cd path) = undefined
+    resolveInnerCommand (Cd path) = undefined
 
     commonPathEcho :: MachineEnvironment -> [[AssignValue]] -> String
     commonPathEcho me args =
       let resolve = map (resolveAssignValue (me^.declaredValues)) args in
         foldl (<>) "" $ map (<> " ") resolve
 
-innerMachine [] = do
-  v <- ask
-  return (v, ())
-
-
-
---                  keys        values      keys    values
-correctnessZip :: [String] -> [String] -> [(String, String)]
-correctnessZip keys values
-  | null keys && not (null values) = []
-  | length keys < length values =             -- means that last key will storage all other values
-    let diff = length keys - length values in
-      let (ones, others) = splitAt (length keys - 1) values in
-        let (backHead : backTail) = reverse keys in
-          zip (reverse backTail) ones <> [(backHead, foldl (<>) "" $ fmap (" " <>) others)]
-  | length keys > length values =             -- means that for free keys will be add default values
-    let diff = length keys - length values in
-      let defaultValues = replicate diff mempty in
-        zip keys (values <> defaultValues)
-  | otherwise = zip keys values
-{-
-correctnessZip ["a", "b", "c"] ["x", "y", "z"]
-correctnessZip ["a", "b", "c"] ["x"]
-correctnessZip ["a"] ["x", "y", "z"]
-correctnessZip ["a", "b"] ["x", "y", "z"]
-correctnessZip [] ["x", "y", "z"]
-correctnessZip ["a", "b"] []
+innerMachine (ThreadCommand cmd:xs) = undefined
 -}
+
+
+
+
 
 readFileParseToStatement :: FilePath -> IO (Either (ParseErrorBundle String Void) [Statement])
 readFileParseToStatement path = do
@@ -143,4 +160,5 @@ block1Execute env
                         putStrLn ""
                         putStrLn ""
                         print statements
+
 call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/example.sh", "x", "y"]

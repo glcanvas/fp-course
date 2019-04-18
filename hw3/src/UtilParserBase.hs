@@ -4,12 +4,11 @@ module UtilParserBase (
   , isEOL
   , correctParse
   , singleQuote
-  , doubleQuote
   , patternIdentifier
   , assignIdentifier
   , parserEndOfCommand
   , aLotOfSheet
-  , qwert
+  , parserPointer
 ) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -18,16 +17,23 @@ import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alpha
 import Data.Void
 import Data.Char(isSpace)
 
+import DefineDataTypes
+
+--
+-- a lot of trivial parsers
+-- functions and combinators
+--
+
 -- | Define Parser type that need String and Error is Void
 type Parser = Parsec Void String
 
--- | check that sub string not consist end of lines but consist only spaces
-isSpaceWithoutEOL :: Parser String
-isSpaceWithoutEOL = many (satisfy (\x -> isSpace x && x /= '\n'))
+-- | skip all whitespaces while can
+isSpaceWithoutEOL :: Parser ()
+isSpaceWithoutEOL = skipMany (satisfy (\x -> isSpace x && x /= '\n'))
 
--- | Check that is end of line
-isEOL :: Parser String
-isEOL = many (satisfy  (=='\n'))
+-- | skip all end of lines as can
+isEOL :: Parser ()
+isEOL = skipMany (satisfy  (=='\n'))
 
 -- | Function that correct parse not empty string for common template
 correctParse :: (Char -> Bool) -> Parser String
@@ -38,25 +44,18 @@ correctParse func = (:) <$> (satisfy func) <*> many (satisfy func)
 -- "'bla bla privet'"
 singleQuote :: Parser String
 singleQuote = between (single '\'') (single '\'') (many (satisfy (/= '\'')))
-              {-lexeme $ -}
 
--- | Return all between double quote as string
--- and don't skip any whitespace
--- "bla bla privet"
-doubleQuote :: Parser String
-doubleQuote = between (single '"') (single '"') (many innerSatisfy)
-  where
-    innerSatisfy :: Parser Char
-    innerSatisfy = (try $ (!!1) <$> string "\\\"") <|> try (head <$> string "\\\\") <|> satisfy (/= '"')
-
-qwert :: Parser Char
-qwert = (try $ (\x -> x!!1) <$> string "\\\"") <|> satisfy (/= '"')
+-- | Parser pointer in bash such as
+-- $hehmdem
+parserPointer :: Parser AssignValue
+parserPointer = Pointer <$> (single '$' *> patternIdentifier)
 
 -- | Parse identifier for template [a-zA-Z_0-9]+
 -- such as "aaa" or
 -- "privet123"
 -- "a______a"
 -- "1______1"
+-- "___"
 patternIdentifier :: Parser String
 patternIdentifier = (:) <$> pattern <*> many pattern
   where
@@ -64,6 +63,7 @@ patternIdentifier = (:) <$> pattern <*> many pattern
     pattern = (try alphaNumChar) <|> single '_'
 
 -- | Values that writes after assign character '=' and there isn't in single or double quotes
+-- must be at end of alternative
 aLotOfSheet :: Parser String
 aLotOfSheet = (:) <$> innerPattern <*> many innerPattern
   where
@@ -96,10 +96,13 @@ assignIdentifier = (:) <$> wrapper letterChar <*> many (wrapper alphaNumChar)
     wrapper :: Parser Char -> Parser Char
     wrapper s = (try s) <|> single '_'
 
--- | call at first some parser and than \n or ;
+-- | call at start of file and some parser and than \n or ;
+-- need to insert after commands
 parserEndOfCommand :: Parser a -> Parser a
 parserEndOfCommand prs =
-  prs <* (isSpaceWithoutEOL *> eolParser)
+  prs <* (isSpaceWithoutEOL *> endOfCommandParser)
   where
-    eolParser :: Parser Char
-    eolParser = satisfy (\x -> x == '\n' || x == ';')
+    endOfCommandParser :: Parser Char
+    endOfCommandParser = satisfy (\x -> x == '\n' || x == ';')
+
+--satisfySequence :: String ->

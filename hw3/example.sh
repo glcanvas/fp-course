@@ -1,3 +1,2 @@
-a="$(ls)"
-b=$(ls)
-c="$(echo "bek" "kek")"
+b=$(adaweqwdwa)
+echo $b

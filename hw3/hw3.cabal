@@ -19,13 +19,12 @@ tested-with:          GHC == 8.0.1
 
 library
   exposed-modules:    Block1
-                      , Block2
                       , Util
                       , UtilParserBase
                       , UtilTestScripts
                       , DefineDataTypes
                       , UtilAssignValues
-                      , UtilInnerCommands
+                      , UtilCommands
   other-modules:      Paths_hw3
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5
@@ -40,6 +39,7 @@ library
                       , parser-combinators
                       , directory
                       , MissingH
+                      , process
   default-language:   Haskell2010
 
 executable hw3-exe
