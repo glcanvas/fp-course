@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module DefineDataTypes (
   AssignValue(..)
   , Statement(..)
@@ -48,6 +50,13 @@ data MachineEnvironment = MachineEnvironment
   } deriving Show
 
 
+instance Semigroup MachineEnvironment where
+  (<>) :: MachineEnvironment -> MachineEnvironment -> MachineEnvironment
+  (MachineEnvironment _ _) <> (MachineEnvironment dv1 cd1) = MachineEnvironment dv1 cd1
+
+instance Monoid MachineEnvironment where
+  mempty :: MachineEnvironment
+  mempty = MachineEnvironment Map.empty mempty
 
 -- | Function that make same as zio function but
 --   assign special values for keys without pair

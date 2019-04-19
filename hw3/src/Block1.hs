@@ -20,6 +20,7 @@ import Data.List
 import DefineDataTypes
 import UtilAssignValues
 import Util
+import qualified Control.Exception as Except
 
 import Control.Applicative.Combinators
 
@@ -37,41 +38,36 @@ innerMachine (AssignRaw ptr value:xs) = do
   let resolver = briefResolveAssignValue (currentState^.declaredValues) value
   lift $ print "============="
   lift $ print resolver
-  innerCall <- lift $ hardResolveAssignValue currentState resolver
-  lift $ putStrLn innerCall
-  --let updMap = Map.insert ptr resolver (currentState^.declaredValues)
-  local ({-declaredValues.~updMap-}const currentState) (innerMachine xs)
+  hardResolve <- lift $ hardResolveAssignValue currentState resolver
+  lift $ putStrLn hardResolve
+  let updMap = Map.insert ptr hardResolve (currentState^.declaredValues)
+  local (declaredValues.~updMap) (innerMachine xs)
 
 
-
+-- | full resolve assign value and representation all result command
+--  with zero exit code as string and concatenate all in big string
 hardResolveAssignValue :: MachineEnvironment -> [AssignValue] -> IO String
 hardResolveAssignValue me (SingleQuote x:xs) = pure x <> hardResolveAssignValue me xs
-hardResolveAssignValue me (AssignCommand cmd:xs) =
-  foldl (<>) (pure mempty) (map innerCall cmd) <> hardResolveAssignValue me xs
-  where
-    innerCall :: ShellCommands -> IO String
-    innerCall = hardResolveShellCommand me
+hardResolveAssignValue me (AssignCommand cmd:xs) = do
+  filterResult <- iterateWithArg me cmd
+  let (_, sRep, _) = foldl (\(_, sB, mB) (_, sA, mA) -> (0, sB <> sA, mA)) (0, mempty, mempty) filterResult
+  pure sRep
 
 hardResolveAssignValue _ [] = pure mempty
 
-hardResolveShellCommand :: MachineEnvironment -> ShellCommands -> IO String
-hardResolveShellCommand me (InnerCommandConst cmd) = pure "INNER"
+-- | execute external command and return exit code with result
+hardResolveShellCommand :: MachineEnvironment -> ShellCommands -> IO (Int, String, MachineEnvironment)
+hardResolveShellCommand me (InnerCommandConst cmd) = resolveInnerCommand me cmd
 hardResolveShellCommand me (ExternalCommandConst cmd) = do
   v <- mapM (\x -> hardResolveAssignValue me [x]) (externalArguments cmd)
-  (exCode, out, err) <- readCreateProcessWithExitCode (proc (externalName cmd) v) ""
-  putStrLn out
-  putStrLn (show exCode)
-  putStrLn err
+  (exCode, out, err) <- Except.catch (readCreateProcessWithExitCode (proc (externalName cmd) v) "") errorHandler
   case exCode of
-    ExitSuccess -> pure out
-    ExitFailure code -> pure (show code)
+    ExitSuccess -> pure (0, out, me)
+    ExitFailure code -> pure (code, err, me)
 
-isCommandExternal :: String -> IO Bool
-isCommandExternal cmd = do
-  (exCode, out, err) <- readCreateProcessWithExitCode (proc "ls" [cmd]) ""
-  case exCode of
-    ExitFailure _ -> pure False
-    ExitSuccess -> pure True
+resolveInnerCommand :: MachineEnvironment -> InnerCommand -> IO (Int, String, MachineEnvironment)
+resolveInnerCommand me (Read args) = undefined
+
 
 {-
 innerMachine (CustomCommand (InnerCommandConst cmd):xs) = resolveInnerCommand cmd
@@ -115,9 +111,34 @@ innerMachine (ThreadCommand cmd:xs) = undefined
 -}
 
 
+-- | function that execute one "ShellCommand" and pass "MachineEnvironment" for other commands
+iterateWithArg :: MachineEnvironment -> [ShellCommands] -> IO [(Int, String, MachineEnvironment)]
+iterateWithArg me (x:xs) = do
+  (errCode, stringResult, newEnv) <- hardResolveShellCommand me x
+  tailResult <- iterateWithArg newEnv xs
+  if errCode /= 0
+    then pure tailResult
+    else pure $ (errCode, stringResult, newEnv) : tailResult
 
+iterateWithArg _ [] = pure []
 
+-- | Function that return true if function is external othervise false
+isCommandExternal :: String -> IO Bool
+isCommandExternal cmd = do
+  (exCode, out, _) <- Except.catch (readCreateProcessWithExitCode (shell $ "type " <> cmd) "") errorHandler
+  let splited = words out
+  if length splited /= 3 || splited!!2 /= "is"
+    then pure False
+    else
+      case exCode of
+        ExitFailure _ -> pure False
+        ExitSuccess -> pure True
 
+-- | function for common call system process execute that handle error and return non zero code
+errorHandler :: Except.SomeException -> IO (ExitCode, String, String)
+errorHandler _ = pure (ExitFailure 1, "", "oops")
+
+-- |
 readFileParseToStatement :: FilePath -> IO (Either (ParseErrorBundle String Void) [Statement])
 readFileParseToStatement path = do
   content <- readFile path
@@ -130,6 +151,7 @@ readFileParseToStatement path = do
       printOrd xs
     printOrd [] = pure ()
 
+-- |
 addValuesToMap :: [String] -> Map.Map String String
 addValuesToMap array = wrappedCall array 1
   where
@@ -139,6 +161,7 @@ addValuesToMap array = wrappedCall array 1
       Map.insert (show pos) x inner
     wrappedCall [] _ = Map.empty
 
+-- |
 block1Execute :: [String] -> IO ()
 block1Execute env
   | null env = error "need execute with <full path too script> ...arguments"
@@ -160,5 +183,5 @@ block1Execute env
                         putStrLn ""
                         putStrLn ""
                         print statements
-
+-- |
 call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/example.sh", "x", "y"]
