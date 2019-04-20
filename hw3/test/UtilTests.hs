@@ -16,22 +16,11 @@ import Util
 
 blockUtilTests :: IO ()
 blockUtilTests = do
-  --parserAssignValueTest
   parserExternalCommandTests
   parserCommandInThreadTests
   parserDoubleQuoteTests
-{-
-parserAssignValueTest :: IO()
-parserAssignValueTest =
-  hspec $
-  describe "parserAssignValue" $ do
-    it "normal test" $
-      runParser parserAssignValue "test" "1234;" `shouldBe`
-      (Right [Number 1234] :: Either (ParseErrorBundle String Void) [AssignValue])
-    it "simple correct test" $
-      runParser parserAssignValue "test" "$abs1234'privet'\"kek\";" `shouldBe`
-      (Right [Pointer "abs1234", SingleQuote "privet", DoubleQuote "kek"] :: Either (ParseErrorBundle String Void) [AssignValue])
--}
+  correctnessZipTest
+
 parserExternalCommandTests :: IO()
 parserExternalCommandTests =
   hspec $
@@ -43,7 +32,6 @@ parserExternalCommandTests =
     it "a lot of whitespace" $
       runParser parserExternalCommand "test" "        bek -n kek      dek mek fec" `shouldBe`
       (Right (ExternalCommandConst $ ExternalConst {externalName = "bek", externalArguments = [SingleQuote "-n", SingleQuote "kek", SingleQuote "dek", SingleQuote "mek", SingleQuote "fec"]}) :: Either (ParseErrorBundle String Void) ShellCommands)
-
 
 parserCommandInThreadTests :: IO()
 parserCommandInThreadTests =
@@ -72,12 +60,11 @@ parserCommandInThreadTests =
     it
       "internal commands echo -n"
       (runParser parserCommandInThread "test" "$(echo  -n bek         ;)" `shouldBe`
-        (Right [InnerCommandConst $ EchoWithout {echoArgumentsWithout = [[SingleQuote "bek"]]}] :: Either (ParseErrorBundle String Void) [ShellCommands]))
+        (Right [InnerCommandConst $ Echo {echoArguments = [[SingleQuote "-n"], [SingleQuote "bek"]]}] :: Either (ParseErrorBundle String Void) [ShellCommands]))
     it
       "command with \" "
       (runParser parserCommandInThread "test" "$(bek mek \"$file\" )" `shouldBe`
         (Right [ExternalCommandConst $ ExternalConst {externalName = "bek", externalArguments = [SingleQuote "mek", DoubleQuote [Pointer "file"]]}] :: Either (ParseErrorBundle String Void) [ShellCommands]))
-
 
 parserDoubleQuoteTests :: IO()
 parserDoubleQuoteTests =
@@ -123,3 +110,32 @@ parserDoubleQuoteTests =
       "recursive $()"
       (runParser doubleQuote "test" "\"$(bek \"$(mek $pek)\") \"" `shouldBe`
         ( Right [AssignCommand [ExternalCommandConst (ExternalConst {externalName = "bek", externalArguments = [DoubleQuote [AssignCommand [ExternalCommandConst (ExternalConst {externalName = "mek", externalArguments = [Pointer "pek"]})]]]})],SingleQuote " "] :: Either (ParseErrorBundle String Void) [AssignValue]))
+
+correctnessZipTest :: IO()
+correctnessZipTest =
+  hspec $
+  describe "correctness for me zip" $ do
+    it
+      "normal test"
+      (correctnessZip ["a", "b", "c"] ["x", "y", "z"] `shouldBe`
+        ([("a", "x"), ("b", "y"), ("c", "z")] :: [(String, String)]))
+    it
+      "short values test"
+      (correctnessZip ["a", "b", "c"] ["x"] `shouldBe`
+        ([("a", "x"), ("b", ""), ("c", "")] :: [(String, String)]))
+    it
+      "short keys test"
+      (correctnessZip ["a"] ["x", "y", "z"] `shouldBe`
+        ([("a", " x y z")] :: [(String, String)]))
+    it
+      "short keys test"
+      (correctnessZip ["a", "b"] ["x", "y", "z"] `shouldBe`
+        ([("a", "x"), ("b", " y z")] :: [(String, String)]))
+    it
+      "empty keys test"
+      (correctnessZip [] ["x", "y", "z"] `shouldBe`
+        ([] :: [(String, String)]))
+    it
+      "empty values test"
+      (correctnessZip ["a", "b", "c"] [] `shouldBe`
+        ([("a", ""), ("b", ""), ("c", "")] :: [(String, String)]))

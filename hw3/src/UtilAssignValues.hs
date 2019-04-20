@@ -43,9 +43,7 @@ briefResolveAssignValue valueMap = innerCall
   where
     innerCall :: [AssignValue] -> [AssignValue]
     innerCall (SingleQuote x:xs) = SingleQuote x : innerCall xs
-    innerCall (Pointer x:xs) =
-      let resolver = Map.lookup x valueMap in
-        (SingleQuote $ fromMaybe mempty resolver) : innerCall xs
+    innerCall (Pointer x:xs) = Pointer x : innerCall xs
     innerCall (DoubleQuote x:xs) = briefResolveAssignValue valueMap x <> innerCall xs
     innerCall (AssignCommand x:xs) = (AssignCommand $ briefResolveCommands valueMap x) : innerCall xs
     innerCall [] = mempty
@@ -62,12 +60,12 @@ briefResolveCommands valueMap = innerCall
 -- | the same as upper function
 briefResolveInnerCommand :: Map.Map String String -> InnerCommand -> ShellCommands
 briefResolveInnerCommand _ (Read args) = InnerCommandConst $ Read args
-briefResolveInnerCommand valueMap (EchoWithout args) = InnerCommandConst $ EchoWithout (briefResolveEcho valueMap args)
 briefResolveInnerCommand valueMap (Echo args) = InnerCommandConst $ Echo (briefResolveEcho valueMap args)
 briefResolveInnerCommand _ Pwd = InnerCommandConst Pwd
 briefResolveInnerCommand valueMap (Cd way) = InnerCommandConst $ Cd (briefResolveAssignValue valueMap way)
 briefResolveInnerCommand _ (Exit key) = InnerCommandConst $ Exit key
 
+-- |
 briefResolveExternalCommand :: Map.Map String String -> ExternalCommand -> ShellCommands
 briefResolveExternalCommand valueMap (ExternalConst name args) =
   ExternalCommandConst $ ExternalConst name (briefResolveAssignValue valueMap args)

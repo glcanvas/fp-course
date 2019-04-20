@@ -1,7 +1,9 @@
 module UtilParserBase (
   Parser
   , isSpaceWithoutEOL
+  , oneSpaceWithoutEOL
   , isEOL
+  , singleSpace
   , correctParse
   , singleQuote
   , patternIdentifier
@@ -9,6 +11,7 @@ module UtilParserBase (
   , parserEndOfCommand
   , aLotOfSheet
   , parserPointer
+  , containsKey
 ) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -16,6 +19,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar, string)
 import Data.Void
 import Data.Char(isSpace)
+import Data.List
 
 import DefineDataTypes
 
@@ -27,9 +31,17 @@ import DefineDataTypes
 -- | Define Parser type that need String and Error is Void
 type Parser = Parsec Void String
 
+-- | single space that not equal \n
+singleSpace :: Parser Char
+singleSpace = satisfy (\x -> isSpace x && x /= '\n')
+
 -- | skip all whitespaces while can
 isSpaceWithoutEOL :: Parser ()
-isSpaceWithoutEOL = skipMany (satisfy (\x -> isSpace x && x /= '\n'))
+isSpaceWithoutEOL = skipMany singleSpace
+
+-- | skip at least ONE whitespaces while can
+oneSpaceWithoutEOL :: Parser ()
+oneSpaceWithoutEOL = skipSome singleSpace
 
 -- | skip all end of lines as can
 isEOL :: Parser ()
@@ -105,4 +117,28 @@ parserEndOfCommand prs =
     endOfCommandParser :: Parser Char
     endOfCommandParser = satisfy (\x -> x == '\n' || x == ';')
 
---satisfySequence :: String ->
+-- | function that return true and all after key if second argument contains
+-- in first and before this exist only whitespace
+-- and after founded pattern is end or spaces
+-- first argument is value
+-- second arguments is key that will be founded
+containsKey :: String -> String -> (Bool, String)
+containsKey value pattern =
+  if value == pattern
+    then (True, mempty)
+    else inner value
+
+  where
+    inner :: String -> (Bool, String)
+    inner (x:xs) =
+      if isSpace x
+        then inner xs
+        else
+          if isPrefixOf pattern (x:xs)
+          then
+            let valueTail = drop (length pattern) (x:xs) in
+              if null valueTail || isSpace (head valueTail)
+                then (True, valueTail)
+                else (False, mempty)
+          else (False, mempty)
+    inner [] = (False, mempty)

@@ -24,7 +24,18 @@ assignedExpression = try (SingleQuote <$> singleQuote)
       <|> try (DoubleQuote <$> doubleQuote)
       <|> try (SingleQuote <$> aLotOfSheet)
       <|> try (AssignCommand <$> parserCommandInThread)
-      <|> parserPointer
+      <|> try parserPointer
+
+-- | function that combine "assignedExpression"
+-- used for anyone arguments such for echo and for cd
+someArguments :: Parser [AssignValue]
+someArguments = isSpaceWithoutEOL *> (((:) <$> combine <*> many combine) <* isSpaceWithoutEOL)
+  where
+    combine :: Parser AssignValue
+    combine = try assignedExpression <|> backSlashParse
+
+    backSlashParse :: Parser AssignValue
+    backSlashParse = SingleQuote <$> ((: []) <$> (single '\\' *> anySingle))
 
 -- | Return all between double quote as "AssignValue"
 -- and don't skip any whitespace
@@ -98,7 +109,7 @@ parserRead :: Parser ShellCommands
 parserRead = InnerCommandConst <$> (isSpaceWithoutEOL *> innerParser)
   where
     innerParser :: Parser InnerCommand
-    innerParser = Read <$> (string "read" *> try (many singleArgument))
+    innerParser = Read <$> (string "read" *> oneSpaceWithoutEOL *> try (many singleArgument))
     singleArgument :: Parser String
     singleArgument = isSpaceWithoutEOL *> (patternIdentifier <* isSpaceWithoutEOL)
 
@@ -107,19 +118,10 @@ parserEcho :: Parser ShellCommands
 parserEcho = InnerCommandConst <$> (isSpaceWithoutEOL *> innerParser)
   where
     innerParser :: Parser InnerCommand
-    innerParser = (string "echo" *> isSpaceWithoutEOL) *> (try second <|> try first )
+    innerParser = (string "echo" *> oneSpaceWithoutEOL *> isSpaceWithoutEOL) *> first
 
     first :: Parser InnerCommand
-    first = Echo <$> many singleArgument
-
-    second :: Parser InnerCommand
-    second = needDelim *> (EchoWithout <$> many singleArgument)
-
-    needDelim :: Parser String
-    needDelim = isSpaceWithoutEOL *> (string "-n" <* isSpaceWithoutEOL)
-
-    singleArgument :: Parser [AssignValue]
-    singleArgument = isSpaceWithoutEOL *> (((:) <$> assignedExpression <*> many assignedExpression) <* isSpaceWithoutEOL)
+    first = Echo <$> many someArguments
 
 --bk = runParser (many singleArgument) "" "a b c"
 
@@ -130,10 +132,7 @@ parserPwd = InnerCommandConst <$> (isSpaceWithoutEOL *> (Pwd <$ string "pwd"))
 -- | simple parse cd such that satisfy until first whitespace
 -- I'm suppose that way may be either full either relative
 parserCd :: Parser ShellCommands
-parserCd = InnerCommandConst <$> (isSpaceWithoutEOL *> (Cd <$> (string "cd" *> parserPath)))
-
-parserPath :: Parser [AssignValue]
-parserPath = undefined -- isSpaceWithoutEOL *> some (satisfy (not . isSpace))
+parserCd = InnerCommandConst <$> (isSpaceWithoutEOL *> (Cd <$> (string "cd" *> oneSpaceWithoutEOL *> someArguments)))
 {-
 "./" -- loop back
 "../" -- dir

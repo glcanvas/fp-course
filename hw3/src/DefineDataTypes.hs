@@ -23,7 +23,6 @@ data ShellCommands = InnerCommandConst InnerCommand
 
 -- | data type for inner commands such as echo cd exit etc
 data InnerCommand = Read {readArguments :: [String]}
-  | EchoWithout {echoArgumentsWithout :: [[AssignValue]]}
   | Echo {echoArguments :: [[AssignValue]]}
   | Pwd
   | Cd {cdArgument :: [AssignValue]}
@@ -52,7 +51,7 @@ data MachineEnvironment = MachineEnvironment
 
 instance Semigroup MachineEnvironment where
   (<>) :: MachineEnvironment -> MachineEnvironment -> MachineEnvironment
-  (MachineEnvironment _ _) <> (MachineEnvironment dv1 cd1) = MachineEnvironment dv1 cd1
+  MachineEnvironment{} <> (MachineEnvironment dv1 cd1) = MachineEnvironment dv1 cd1
 
 instance Monoid MachineEnvironment where
   mempty :: MachineEnvironment
@@ -74,11 +73,3 @@ correctnessZip keys values
       let defaultValues = replicate diff mempty in
         zip keys (values <> defaultValues)
   | otherwise = zip keys values
-{-
-correctnessZip ["a", "b", "c"] ["x", "y", "z"]
-correctnessZip ["a", "b", "c"] ["x"]
-correctnessZip ["a"] ["x", "y", "z"]
-correctnessZip ["a", "b"] ["x", "y", "z"]
-correctnessZip [] ["x", "y", "z"]
-correctnessZip ["a", "b"] []
--}
