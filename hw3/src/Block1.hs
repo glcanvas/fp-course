@@ -100,19 +100,18 @@ resolveInnerCommand me (Echo arguments) = do
       let concatValue = foldl (<>) "" $ map (<> " ") (filteredValue : tail resolvedValues) in
       pure (0, concatValue, me)
 
-resolveInnerCommand me Pwd = pure (0, me^.currentDirectory, me)
+resolveInnerCommand me Pwd = pure (0, me^.currentDirectory <> "\n", me)
 
 resolveInnerCommand me (Cd way) = do
   v <- hardResolveAssignValue me way
   let splited = splitOn "/" v
   let currentPath = splitOn "/" $ me^.currentDirectory
-  print splited
-  print currentPath
+  let filtered = filter (not . null) currentPath
   if not (null splited) && null (head splited)
     -- | for absolute path such that /.... hello
     then pure(0, mempty, (currentDirectory .~ foldl (\b a -> b <> "/" <> a) mempty splited) me)
     -- | for relative path such that heh/..
-    else pure(0, mempty, (currentDirectory .~ foldl (\b a -> b <> "/" <> a) mempty (wrapper splited (reverse currentPath))) me)
+    else pure(0, mempty, (currentDirectory .~ foldl (\b a -> b <> "/" <> a) mempty (wrapper splited (reverse filtered))) me)
   where
     -- |       readedPath   envPath
     wrapper :: [String] -> [String] -> [String]

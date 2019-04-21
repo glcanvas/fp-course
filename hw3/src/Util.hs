@@ -18,8 +18,9 @@ parserCommands :: Parser [Statement]
 parserCommands = many (isEOL *> innerCommand <* isEOL)
   where
     innerCommand :: Parser Statement -- Here if and while must be at first place otherwise it will be parsered and (maybe)fail by  CustomCommand
-    innerCommand = try (CustomCommand <$> parserOneInnerCommand) -- parser one of command not in $()
-                   <|> try (ThreadCommand <$> parserEndOfCommand parserCommandInThread) -- parser command that is in $()
+    innerCommand = try (CustomCommand <$> parserEndOfCommand parserOneInnerCommand) -- parser one of command not in $()
+                   <|> try (CustomCommand <$> parserEndOfCommand parserExternalCommand) -- parser one external command
+                   <|> try (ThreadCommand <$> parserEndOfCommand (isSpaceWithoutEOL *> parserCommandInThread)) -- parser command that is in $()
                    <|> parserAssign -- parser assign value
 
 -- | Main function for all of this

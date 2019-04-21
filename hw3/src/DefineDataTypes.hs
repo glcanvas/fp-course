@@ -57,7 +57,7 @@ instance Monoid MachineEnvironment where
   mempty :: MachineEnvironment
   mempty = MachineEnvironment Map.empty mempty
 
--- | Function that make same as zio function but
+-- | Function that make same as zip function but
 --   assign special values for keys without pair
 --                  keys        values      keys    values
 correctnessZip :: [String] -> [String] -> [(String, String)]
