@@ -12,6 +12,7 @@ module UtilParserBase (
   , aLotOfSheet
   , parserPointer
   , containsKey
+  , passWhitespace
 ) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -22,11 +23,6 @@ import Data.Char(isSpace)
 import Data.List
 
 import DefineDataTypes
-
---
--- a lot of trivial parsers
--- functions and combinators
---
 
 -- | Define Parser type that need String and Error is Void
 type Parser = Parsec Void String
@@ -142,3 +138,8 @@ containsKey value pattern =
                 else (False, mempty)
           else (False, mempty)
     inner [] = (False, mempty)
+
+-- | pass simple whitespaces
+passWhitespace :: Parser a -> Parser a
+passWhitespace = between isSpaceWithoutEOL isSpaceWithoutEOL
+

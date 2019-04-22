@@ -1,14 +1,11 @@
-module UtilCommands where
-
-{- parserRead
-   , parserEcho
-   , parserPwd
-   , parserCd
-   , parserExit
-   --, singleArgument
-   , parserPath
-   , parserOneInnerCommand
--}
+module UtilCommands (
+  assignedExpression
+  , someArguments
+  , doubleQuote
+  , parserCommandInThread
+  , parserExternalCommand
+  , parserOneInnerCommand
+)where
 
 import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar, string)
 import Text.Megaparsec
@@ -64,23 +61,16 @@ doubleQuote = between (single '"') (single '"') wrap
 -- This command may be write only in this $() construction
 -- function satisfy condition that inner of "$(...)" may be empty
 parserCommandInThread :: Parser [ShellCommands]
-parserCommandInThread = between (string "$(") (string ")") (try wrapper <|> [] <$ isSpaceWithoutEOL)
+parserCommandInThread =
+  between (string "$(") (isSpaceWithoutEOL *> string ")") (try wrapper <|> [] <$ isSpaceWithoutEOL)
   where
-  -- | here function that wrap into yourself innerParserCommand or pass whitespace
-  wrapper :: Parser [ShellCommands]
-  wrapper = many combineCommandWithCMD
-
-  -- | function that combine one command that may ended by nothing or by command delimetr
-  combineCommandWithCMD :: Parser ShellCommands
-  combineCommandWithCMD = try (parserEndOfCommand passWhitespace) <|> passWhitespace
-
-  -- | parser one command that splited by any whitespace without \n
-  passWhitespace :: Parser ShellCommands
-  passWhitespace = between isSpaceWithoutEOL isSpaceWithoutEOL innerParserCommand
-
-  -- | here function that parse only one command that may be either inner or external
-  innerParserCommand :: Parser ShellCommands
-  innerParserCommand = try parserOneInnerCommand <|> parserExternalCommand
+    wrapper :: Parser [ShellCommands]
+    wrapper = many combineCommandWithCMD
+    combineCommandWithCMD :: Parser ShellCommands
+    combineCommandWithCMD = try (parserEndOfCommand (passWhitespace innerParserCommand) <* isSpaceWithoutEOL)
+      <|> passWhitespace innerParserCommand
+    innerParserCommand :: Parser ShellCommands
+    innerParserCommand = try parserOneInnerCommand <|> try parserExternalCommand
 
 
 -- | Function that parse one external command
@@ -89,20 +79,6 @@ parserExternalCommand =
     ExternalCommandConst <$>
     (ExternalConst <$> between isSpaceWithoutEOL isSpaceWithoutEOL assignIdentifier <*>
      many (between isSpaceWithoutEOL isSpaceWithoutEOL assignedExpression))
-
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
----------------------------------------------- INNER COMMANDS -------------------------------------------------------
 
 -- | Inner command that read arguments from console
 parserRead :: Parser ShellCommands
@@ -123,8 +99,6 @@ parserEcho = InnerCommandConst <$> (isSpaceWithoutEOL *> innerParser)
     first :: Parser InnerCommand
     first = Echo <$> many someArguments
 
---bk = runParser (many singleArgument) "" "a b c"
-
 -- | Inner command that return current full path
 parserPwd :: Parser ShellCommands
 parserPwd = InnerCommandConst <$> (isSpaceWithoutEOL *> (Pwd <$ string "pwd"))
@@ -133,19 +107,7 @@ parserPwd = InnerCommandConst <$> (isSpaceWithoutEOL *> (Pwd <$ string "pwd"))
 -- I'm suppose that way may be either full either relative
 parserCd :: Parser ShellCommands
 parserCd = InnerCommandConst <$> (isSpaceWithoutEOL *> (Cd <$> (string "cd" *> oneSpaceWithoutEOL *> someArguments)))
-{-
-"./" -- loop back
-"../" -- dir
-split by "/"
-/
-.
-..
-\
-\"
-./"privet "\ kek
-runParser parserPath "" "   ../   / "
-""
--}
+
 -- | simple parse exit such satisfy template such as "exit <exit code>"
 parserExit :: Parser ShellCommands
 parserExit = InnerCommandConst <$> (isSpaceWithoutEOL *> (Exit <$> (string "exit" *> parserExitCode)))

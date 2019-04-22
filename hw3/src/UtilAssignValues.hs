@@ -65,7 +65,7 @@ briefResolveInnerCommand _ Pwd = InnerCommandConst Pwd
 briefResolveInnerCommand valueMap (Cd way) = InnerCommandConst $ Cd (briefResolveAssignValue valueMap way)
 briefResolveInnerCommand _ (Exit key) = InnerCommandConst $ Exit key
 
--- |
+-- | resolve external command
 briefResolveExternalCommand :: Map.Map String String -> ExternalCommand -> ShellCommands
 briefResolveExternalCommand valueMap (ExternalConst name args) =
   ExternalCommandConst $ ExternalConst name (briefResolveAssignValue valueMap args)

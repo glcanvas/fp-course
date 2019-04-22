@@ -40,6 +40,7 @@ executeDir dir = do
       let content' = content <> "\n"
       let value = runParser parserFile "" content'
       print value
+      print file
       case value of
         Left _ -> error "errr"
         Right _ -> return ()

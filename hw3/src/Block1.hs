@@ -84,21 +84,28 @@ hardResolveShellCommand me (ExternalCommandConst cmd) = do
 -- | resolve custom inner commands
 resolveInnerCommand :: MachineEnvironment -> InnerCommand -> IO (Int, String, MachineEnvironment)
 resolveInnerCommand me (Read args) = do
-  readString <- getLine
+  (ioString, erCode) <- Except.catch (sequenceA (getLine, pure 0)) readHandler
+  readString <- ioString
   let zipped = correctnessZip args (words readString)
   let updMap = foldr (\(k, v) b -> Map.insert k v b) (me^.declaredValues) zipped
-  pure (0, mempty,  me{_declaredValues=updMap})
+  pure (erCode, mempty,  me{_declaredValues=updMap})
+  where
+    readHandler :: Except.SomeException -> IO (IO String, Int)
+    readHandler _ = pure (pure "", 1)
 
 resolveInnerCommand me (Echo arguments) = do
   resolvedValues <- mapM (hardResolveAssignValue me) arguments
-  let (deleteNewLine, filteredValue) = containsKey (head resolvedValues) "-n"
-  if not (null resolvedValues) && not deleteNewLine
-    then
-      let concatValue = foldl (<>) "" $ map (<> " ") resolvedValues in
-      pure (0, concatValue <> "\n", me)
-    else
-      let concatValue = foldl (<>) "" $ map (<> " ") (filteredValue : tail resolvedValues) in
-      pure (0, concatValue, me)
+  if null resolvedValues
+    then pure(0, mempty, me)
+    else do
+      let (deleteNewLine, filteredValue) = containsKey (head resolvedValues) "-n"
+      if not (null resolvedValues) && not deleteNewLine
+        then
+        let concatValue = foldl (<>) "" $ map (<> " ") resolvedValues in
+        pure (0, concatValue <> "\n", me)
+        else
+        let concatValue = foldl (<>) "" $ map (<> " ") (filteredValue : tail resolvedValues) in
+        pure (0, concatValue, me)
 
 resolveInnerCommand me Pwd = pure (0, me^.currentDirectory <> "\n", me)
 
@@ -107,13 +114,13 @@ resolveInnerCommand me (Cd way) = do
   let splited = splitOn "/" v
   let currentPath = splitOn "/" $ me^.currentDirectory
   let filtered = filter (not . null) currentPath
-  if not (null splited) && null (head splited)
-    -- | for absolute path such that /.... hello
-    then pure(0, mempty, (currentDirectory .~ foldl (\b a -> b <> "/" <> a) mempty splited) me)
-    -- | for relative path such that heh/..
-    else pure(0, mempty, (currentDirectory .~ foldl (\b a -> b <> "/" <> a) mempty (wrapper splited (reverse filtered))) me)
+  let path = mergePath splited filtered
+  a <- doesFileExist path
+  b <- doesDirectoryExist path
+  if a || b
+    then pure(0, mempty, (currentDirectory .~ path) me)
+    else pure(1, mempty, me)
   where
-    -- |       readedPath   envPath
     wrapper :: [String] -> [String] -> [String]
     wrapper [] ys = reverse ys
     wrapper (x:xs) [] =
@@ -126,7 +133,10 @@ resolveInnerCommand me (Cd way) = do
         "." -> wrapper xs (y:ys)
         ".." -> wrapper xs ys
         value -> wrapper xs (value:y:ys)
-
+    mergePath splited filtered =
+      if not (null splited) && null (head splited)
+          then foldl (\b a -> b <> "/" <> a) mempty splited
+          else foldl (\b a -> b <> "/" <> a) mempty (wrapper splited (reverse filtered))
 
 resolveInnerCommand me (Exit code) = pure (read code, mempty, me)
 

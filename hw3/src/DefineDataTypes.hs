@@ -11,48 +11,53 @@ module DefineDataTypes (
 ) where
 
 import qualified Data.Map as Map
-data Statement = AssignRaw String [AssignValue]
+
+-- | Main data type for parsed values
+data Statement = AssignRaw String [AssignValue] -- constructor for raw assigned value
   | CustomCommand ShellCommands-- command that write not in $(..)
   | ThreadCommand [ShellCommands] -- this commands will execute in new enviroment between $(..)
   deriving (Show, Eq)
 
 -- | Common data type for all commands such as inner and external
-data ShellCommands = InnerCommandConst InnerCommand
-  | ExternalCommandConst ExternalCommand
+data ShellCommands = InnerCommandConst InnerCommand -- constructor for inner command
+  | ExternalCommandConst ExternalCommand -- constructor for external command
   deriving (Show, Eq)
 
 -- | data type for inner commands such as echo cd exit etc
-data InnerCommand = Read {readArguments :: [String]}
-  | Echo {echoArguments :: [[AssignValue]]}
-  | Pwd
-  | Cd {cdArgument :: [AssignValue]}
-  | Exit {exitCode :: String}
+data InnerCommand = Read {readArguments :: [String]} -- constructor for read
+  | Echo {echoArguments :: [[AssignValue]]} -- constructor for echo
+  | Pwd -- constructor for pwd
+  | Cd {cdArgument :: [AssignValue]} -- constructor for cd
+  | Exit {exitCode :: String} -- constructor for exit
    deriving (Show, Eq)
 
 -- | data type for external commands (from os)
 data ExternalCommand = ExternalConst
-  {
-    externalName :: String
-    , externalArguments :: [AssignValue]
+  { -- constructor inner external command
+    externalName :: String -- na,e of command
+    , externalArguments :: [AssignValue] -- list of arguments
   } deriving (Show, Eq)
 
-data AssignValue = SingleQuote String
-  | DoubleQuote [AssignValue]
-  | Pointer String
+-- | data for raw values that may be in assigned constructor
+data AssignValue = SingleQuote String -- constructor for single quote
+  | DoubleQuote [AssignValue] -- constructor for double quote
+  | Pointer String -- constructor for pointer
   | AssignCommand [ShellCommands] -- this commands will execute in new enviroment between $(..)
   deriving (Show, Eq)
 
+-- | data for machine state that storage map of declared values and storage current work directory
 data MachineEnvironment = MachineEnvironment
   {
     _declaredValues :: Map.Map String String
     , _currentDirectory :: FilePath
   } deriving Show
 
-
+-- | semigroup for machine state
 instance Semigroup MachineEnvironment where
   (<>) :: MachineEnvironment -> MachineEnvironment -> MachineEnvironment
   MachineEnvironment{} <> (MachineEnvironment dv1 cd1) = MachineEnvironment dv1 cd1
 
+-- | monoid for machine state
 instance Monoid MachineEnvironment where
   mempty :: MachineEnvironment
   mempty = MachineEnvironment Map.empty mempty
