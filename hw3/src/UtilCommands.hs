@@ -77,7 +77,7 @@ parserCommandInThread =
 parserExternalCommand :: Parser ShellCommands
 parserExternalCommand =
     ExternalCommandConst <$>
-    (ExternalConst <$> between isSpaceWithoutEOL isSpaceWithoutEOL assignIdentifier <*>
+    (ExternalConst <$> between isSpaceWithoutEOL isSpaceWithoutEOL someArguments <*>
      many (between isSpaceWithoutEOL isSpaceWithoutEOL assignedExpression))
 
 -- | Inner command that read arguments from console

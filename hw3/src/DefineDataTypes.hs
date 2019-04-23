@@ -34,7 +34,7 @@ data InnerCommand = Read {readArguments :: [String]} -- constructor for read
 -- | data type for external commands (from os)
 data ExternalCommand = ExternalConst
   { -- constructor inner external command
-    externalName :: String -- na,e of command
+    externalName :: [AssignValue] -- na,e of command
     , externalArguments :: [AssignValue] -- list of arguments
   } deriving (Show, Eq)
 

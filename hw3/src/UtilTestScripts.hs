@@ -6,6 +6,7 @@ import System.Directory
 import Data.String.Utils
 import Text.Megaparsec
 import Util
+import Block1
 
 -- | Function that execute all scripts from directory recursive that end with *.sh and is file
 -- executeDir "/home/nikita/IdeaProjects/haskell-itmo-2019-hw3/task1/"
@@ -36,11 +37,6 @@ executeDir dir = do
     iterateIO [] = putStrLn $ "end of dir" <> dir
     executeFile :: FilePath -> IO ()
     executeFile file = do
-      content <- readFile file
-      let content' = content <> "\n"
-      let value = runParser parserFile "" content'
-      print value
-      print file
-      case value of
-        Left _ -> error "errr"
-        Right _ -> return ()
+      block1Execute [file]
+      putStrLn file
+      putStrLn "====================="

@@ -68,7 +68,8 @@ briefResolveInnerCommand _ (Exit key) = InnerCommandConst $ Exit key
 -- | resolve external command
 briefResolveExternalCommand :: Map.Map String String -> ExternalCommand -> ShellCommands
 briefResolveExternalCommand valueMap (ExternalConst name args) =
-  ExternalCommandConst $ ExternalConst name (briefResolveAssignValue valueMap args)
+  ExternalCommandConst $
+    ExternalConst (briefResolveAssignValue valueMap name) (briefResolveAssignValue valueMap args)
 
 -- | The same as all upper function
 briefResolveEcho :: Map.Map String String -> [[AssignValue]] -> [[AssignValue]]
