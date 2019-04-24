@@ -6,6 +6,6 @@ import Block1
 main :: IO ()
 main = do
   args <- getArgs
-  block1Execute args
+  executeScript args
 
 

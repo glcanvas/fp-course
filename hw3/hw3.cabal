@@ -29,13 +29,9 @@ library
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5
                       , mtl
-                      , transformers
                       , megaparsec
                       , containers
-                      , microlens
-                      , microlens-th
                       , lens
-                      , exceptions
                       , parser-combinators
                       , directory
                       , MissingH

@@ -7,10 +7,12 @@ module DefineDataTypes (
   , ShellCommands(..)
   , ExternalCommand(..)
   , MachineEnvironment(..)
+  , WrapMachineEnv(..)
   , correctnessZip
 ) where
 
 import qualified Data.Map as Map
+import Data.IORef
 
 -- | Main data type for parsed values
 data Statement = AssignRaw String [AssignValue] -- constructor for raw assigned value
@@ -51,6 +53,12 @@ data MachineEnvironment = MachineEnvironment
     _declaredValues :: Map.Map String String
     , _currentDirectory :: FilePath
   } deriving Show
+
+-- | newtype that wrap "MachineEnvironment" in IORef
+newtype WrapMachineEnv = WrapMachineEnv
+  { -- reference (not JoJo) for storage "MachineEnvironment"
+    envValue :: IORef MachineEnvironment
+  }
 
 -- | semigroup for machine state
 instance Semigroup MachineEnvironment where

@@ -13,6 +13,8 @@ module UtilParserBase (
   , parserPointer
   , containsKey
   , passWhitespace
+  , flatString
+  , splitStringByNewLine
 ) where
 
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -21,6 +23,7 @@ import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alpha
 import Data.Void
 import Data.Char(isSpace)
 import Data.List
+import Data.List.Split
 
 import DefineDataTypes
 
@@ -143,3 +146,10 @@ containsKey value pattern =
 passWhitespace :: Parser a -> Parser a
 passWhitespace = between isSpaceWithoutEOL isSpaceWithoutEOL
 
+-- | flat string without redurant ws
+flatString :: String -> String
+flatString str = foldl (<>) mempty (map (<> " ") $ filter (not . null) (splitWhen isSpace str))
+
+-- | split lines by whitespace
+splitStringByNewLine :: String -> [String]
+splitStringByNewLine = splitOn "\n"

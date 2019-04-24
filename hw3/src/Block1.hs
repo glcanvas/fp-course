@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Block1 where
+module Block1 (
+  executeScript
+) where
 
 import qualified Data.Map as Map
 import Control.Monad.Reader
@@ -28,10 +30,8 @@ import Control.Applicative.Combinators
 
 makeLenses ''MachineEnvironment
 
-newtype ENV = ENV {envValue :: IORef MachineEnvironment}
-
-
-innerMachine :: [Statement] -> ReaderT ENV IO ()
+-- | One of main function that interpret script values
+innerMachine :: [Statement] -> ReaderT WrapMachineEnv IO ()
 innerMachine [] = ask >>= (\v -> return ())
 
 innerMachine (AssignRaw ptr value:xs) = do
@@ -40,7 +40,7 @@ innerMachine (AssignRaw ptr value:xs) = do
   let resolver = briefResolveAssignValue (machine^.declaredValues) value
 
   newMachine <- lift (newIORef machine)
-  let env = ENV newMachine
+  let env = WrapMachineEnv newMachine
 
   hardResolve <- lift $ hardResolveAssignValue env resolver
   let updMap = Map.insert ptr hardResolve (machine^.declaredValues)
@@ -64,7 +64,7 @@ innerMachine (ThreadCommand cmds:xs) = do
   machine <- lift $ readIORef (envValue currentState)
   let resolver = briefResolveCommands (machine^.declaredValues) cmds
   newMachine <- lift (newIORef machine)
-  let env = ENV newMachine
+  let env = WrapMachineEnv newMachine
   lift $ iterateWithArg env cmds
   local (const currentState) (innerMachine xs)
 
@@ -72,7 +72,7 @@ innerMachine (ThreadCommand cmds:xs) = do
 
 -- | full resolve assign value and representation all result command
 --  with zero exit code as string and concatenate all in big string
-hardResolveAssignValue :: ENV -> [AssignValue] -> IO String
+hardResolveAssignValue :: WrapMachineEnv -> [AssignValue] -> IO String
 hardResolveAssignValue me (SingleQuote x:xs) = pure x <> hardResolveAssignValue me xs
 hardResolveAssignValue env (Pointer x:xs) =
   do
@@ -87,28 +87,26 @@ hardResolveAssignValue env (AssignCommand cmd:xs) = do
 
 hardResolveAssignValue _ [] = pure mempty
 
-
-
-
 -- | execute external command and return exit code with result
-hardResolveShellCommand :: ENV -> ShellCommands -> IO (Int, String)
+hardResolveShellCommand :: WrapMachineEnv -> ShellCommands -> IO (Int, String)
 hardResolveShellCommand env (InnerCommandConst cmd) = resolveInnerCommand env cmd
 hardResolveShellCommand env (ExternalCommandConst cmd) = do
   v <- mapM (\x -> hardResolveAssignValue env [x]) (externalArguments cmd)
   solvedExternalName <- hardResolveAssignValue env (externalName cmd)
-  let concatNameArgs = foldl (<>) solvedExternalName v
-  let flatted = foldl (<>) [] (map splitStringByNewLine v)
-
-  (exCode, out, err) <- Except.catch ( readCreateProcessWithExitCode (proc solvedExternalName flatted) "") errorHandler
-  case exCode of
-    ExitSuccess -> pure (0, out <> " " <> err)
-    ExitFailure code -> pure (code, out <> " " <> err)
-
-
-
+  let concatNameArgs = foldl (\b a -> b <> " " <> a) (solvedExternalName <> " ") v
+  let splitedNameArgs = splitWhen isSpace concatNameArgs
+  if null splitedNameArgs || null (head splitedNameArgs)
+    then  pure (1, mempty)
+    else do
+      let name = head splitedNameArgs
+      let args = filter (not . null) $ tail splitedNameArgs
+      (exCode, out, err) <- Except.catch ( readCreateProcessWithExitCode (proc name args) "") errorHandler
+      case exCode of
+        ExitSuccess -> pure (0, out <> " " <> err)
+        ExitFailure code -> pure (code, out <> " " <> err)
 
 -- | resolve custom inner commands
-resolveInnerCommand :: ENV -> InnerCommand -> IO (Int, String)
+resolveInnerCommand :: WrapMachineEnv -> InnerCommand -> IO (Int, String)
 resolveInnerCommand env (Read args) = do
   (ioString, erCode) <- Except.catch (sequenceA (getLine, pure 0)) readHandler
   readString <- ioString
@@ -132,7 +130,6 @@ resolveInnerCommand me (Echo arguments) = do
               in pure (0, flatString concatValue <> "\n")
         else let concatValue = foldl (<>) "" $ map (<> " ") (filteredValue : tail resolvedValues)
               in pure (0, flatString concatValue)
-
 
 resolveInnerCommand env Pwd = do
   me <- readIORef (envValue env)
@@ -172,13 +169,8 @@ resolveInnerCommand env (Cd way) = do
 
 resolveInnerCommand _ (Exit code) = pure (read code, mempty)
 
-
-
-
-
-
 -- | function that execute one "ShellCommand" and pass "MachineEnvironment" for other commands
-iterateWithArg :: ENV -> [ShellCommands] -> IO [(Int, String)]
+iterateWithArg :: WrapMachineEnv -> [ShellCommands] -> IO [(Int, String)]
 iterateWithArg env (x:xs) = do
   (errCode, stringResult) <- hardResolveShellCommand env x
   if isExitCommand x
@@ -189,43 +181,27 @@ iterateWithArg env (x:xs) = do
 
 iterateWithArg _ [] = pure []
 
-
-
-
-
--- | Function that return true if function is external othervise false
-isCommandExternal :: String -> IO Bool
-isCommandExternal cmd = do
-  (exCode, out, _) <- Except.catch (readCreateProcessWithExitCode (shell $ "type " <> cmd) "") errorHandler
-  let splited = words out
-  if length splited /= 3 || splited!!2 /= "is"
-    then pure False
-    else
-      case exCode of
-        ExitFailure _ -> pure False
-        ExitSuccess -> pure True
-
 -- | check that command is Exit
 isExitCommand :: ShellCommands -> Bool
 isExitCommand (InnerCommandConst (Exit _)) = True
 isExitCommand _ = False
 
-
-
-
-
 -- | function for common call system process execute that handle error and return non zero code
 errorHandler :: Except.SomeException -> IO (ExitCode, String, String)
 errorHandler _ = pure (ExitFailure 1, mempty, mempty)
 
--- |
 readFileParseToStatement :: FilePath -> IO (Either (ParseErrorBundle String Void) [Statement])
 readFileParseToStatement path = do
-  content <- readFile path
-  let content' = content <> "\n"
-  return $ runParser parserFile "" content'
+  existFile <- doesFileExist path
+  if existFile
+    then do
+      content <- readFile path
+      let content' = content <> "\n"
+      return $ runParser parserFile "" content'
+    else
+      putStrLn "file does not exist" >> return (Right [])
 
--- |
+
 addValuesToMap :: [String] -> Map.Map String String
 addValuesToMap array = wrappedCall array 1
   where
@@ -235,9 +211,15 @@ addValuesToMap array = wrappedCall array 1
       Map.insert (show pos) x inner
     wrappedCall [] _ = Map.empty
 
--- |
-block1Execute :: [String] -> IO ()
-block1Execute env
+-- | main function that get arguments
+-- and execute script
+-- show error ig fail
+-- write to console
+--
+-- >>> executeScript ["/fp-homework-templates/hw3/example.sh", "/LICENSE", "y"]
+-- >>> will iterate throw all lines of example.sh script
+executeScript :: [String] -> IO ()
+executeScript env
   | null env = error "need execute with <full path too script> ...arguments"
   | otherwise =
     let scriptPath = head env in
@@ -247,18 +229,9 @@ block1Execute env
         case content of
           Left code -> putStrLn $ errorBundlePretty code
           Right statements ->
-            print statements >>
             let arguments = Map.insert "0" scriptPath (addValuesToMap $ tail env) in
               let meIO = newIORef MachineEnvironment {_declaredValues = arguments, _currentDirectory = dir} in
               do
                 me <- meIO
-                let env = ENV me
+                let env = WrapMachineEnv me
                 runReaderT (innerMachine statements) env
-
-call = block1Execute ["/home/nikita/IdeaProjects/fp-homework-templates/hw3/example.sh", "x", "y"]
-
-flatString :: String -> String
-flatString str = foldl (<>) mempty (map (<> " ") $ filter (not . null) (splitWhen isSpace str))
-
-splitStringByNewLine :: String -> [String]
-splitStringByNewLine = splitOn "\n"

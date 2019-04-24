@@ -29,13 +29,13 @@ parserExternalCommandTests =
       "normal test"
       (runParser parserExternalCommand "test" "bek kek" `shouldBe`
        (Right (ExternalCommandConst $
-        ExternalConst {externalName = "bek", externalArguments = [SingleQuote "kek"]})
+        ExternalConst {externalName = [SingleQuote "bek"], externalArguments = [SingleQuote "kek"]})
           :: Either (ParseErrorBundle String Void) ShellCommands))
     it "a lot of whitespace" $
       runParser parserExternalCommand "test" "        bek -n kek      dek mek fec" `shouldBe`
       (Right (ExternalCommandConst $
         ExternalConst
-          {externalName = "bek",
+          {externalName = [SingleQuote "bek"],
             externalArguments =
               [SingleQuote "-n", SingleQuote "kek", SingleQuote "dek", SingleQuote "mek", SingleQuote "fec"]})
                 :: Either (ParseErrorBundle String Void) ShellCommands)
@@ -49,7 +49,7 @@ parserCommandInThreadTests =
       (runParser parserCommandInThread "test" "$(bek kek)" `shouldBe`
         (Right [ExternalCommandConst
           $ ExternalConst
-            {externalName = "bek", externalArguments = [SingleQuote "kek"]}]
+            {externalName = [SingleQuote "bek"], externalArguments = [SingleQuote "kek"]}]
               :: Either (ParseErrorBundle String Void) [ShellCommands]))
     it
       "empty block test"
@@ -59,7 +59,7 @@ parserCommandInThreadTests =
       "a lot of whitespace"
       (runParser parserCommandInThread "test" "$(          a       )" `shouldBe`
         (Right [ExternalCommandConst $
-          ExternalConst {externalName = "a", externalArguments = []}]
+          ExternalConst {externalName = [SingleQuote "a"], externalArguments = []}]
             :: Either (ParseErrorBundle String Void) [ShellCommands]))
     it
      "internal command read"
@@ -80,7 +80,7 @@ parserCommandInThreadTests =
       "command with \" "
       (runParser parserCommandInThread "test" "$(bek mek \"$file\" )" `shouldBe`
         (Right [ExternalCommandConst $
-          ExternalConst {externalName = "bek",
+          ExternalConst {externalName = [SingleQuote "bek"],
             externalArguments = [SingleQuote "mek", DoubleQuote [Pointer "file"]]}]
               :: Either (ParseErrorBundle String Void) [ShellCommands]))
 
@@ -100,23 +100,23 @@ parserDoubleQuoteTests =
       "function test"
       (runParser doubleQuote "test" "\"$(bek mek)\"" `shouldBe`
         (Right [AssignCommand [ExternalCommandConst
-          (ExternalConst {externalName = "bek", externalArguments = [SingleQuote "mek"]})]]
+          (ExternalConst {externalName = [SingleQuote "bek"], externalArguments = [SingleQuote "mek"]})]]
             :: Either (ParseErrorBundle String Void) [AssignValue]))
     it
       "function test with whitespace"
       (runParser doubleQuote "test" "\"               $(      bek       mek       )          \"" `shouldBe`
         (Right [SingleQuote "               ",
           AssignCommand [ExternalCommandConst
-            (ExternalConst {externalName = "bek", externalArguments = [SingleQuote "mek"]})],
+            (ExternalConst {externalName = [SingleQuote "bek"], externalArguments = [SingleQuote "mek"]})],
               SingleQuote "          "] :: Either (ParseErrorBundle String Void) [AssignValue]))
     it
       "two inner function function"
       (runParser doubleQuote "test" "\"$(   bek          mek;fek        lek       )\"" `shouldBe`
         (Right [AssignCommand
           [ExternalCommandConst
-            (ExternalConst {externalName = "bek", externalArguments = [SingleQuote "mek"]}),
+            (ExternalConst {externalName = [SingleQuote "bek"], externalArguments = [SingleQuote "mek"]}),
               ExternalCommandConst
-                (ExternalConst {externalName = "fek", externalArguments = [SingleQuote "lek"]})]]
+                (ExternalConst {externalName = [SingleQuote "fek"], externalArguments = [SingleQuote "lek"]})]]
                   :: Either (ParseErrorBundle String Void) [AssignValue]))
     it
       "function with pointer"
@@ -124,7 +124,7 @@ parserDoubleQuoteTests =
         (Right [AssignCommand
           [ExternalCommandConst
             (ExternalConst
-              {externalName = "bek", externalArguments = [SingleQuote "mek"]})], SingleQuote " ", Pointer "ptr"]
+              {externalName = [SingleQuote "bek"], externalArguments = [SingleQuote "mek"]})], SingleQuote " ", Pointer "ptr"]
                 :: Either (ParseErrorBundle String Void) [AssignValue]))
     it
       "pointers"
@@ -140,17 +140,17 @@ parserDoubleQuoteTests =
       "quotes in $() "
       (runParser doubleQuote "test" "\"$(bek \"$file\" $file) \"" `shouldBe`
         ( Right [AssignCommand [ExternalCommandConst
-          (ExternalConst {externalName = "bek",
+          (ExternalConst {externalName = [SingleQuote "bek"],
             externalArguments = [DoubleQuote [Pointer "file"],Pointer "file"]})],SingleQuote " "]
               :: Either (ParseErrorBundle String Void) [AssignValue]))
     it
       "recursive $()"
       (runParser doubleQuote "test" "\"$(bek \"$(mek $pek)\") \"" `shouldBe`
         ( Right [AssignCommand [ExternalCommandConst
-          (ExternalConst {externalName = "bek",
+          (ExternalConst {externalName = [SingleQuote "bek"],
             externalArguments = [DoubleQuote [AssignCommand
               [ExternalCommandConst (ExternalConst
-                {externalName = "mek", externalArguments = [Pointer "pek"]})]]]})],SingleQuote " "]
+                {externalName = [SingleQuote "mek"], externalArguments = [Pointer "pek"]})]]]})],SingleQuote " "]
                   :: Either (ParseErrorBundle String Void) [AssignValue]))
 
 correctnessZipTest :: IO()

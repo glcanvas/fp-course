@@ -9,34 +9,42 @@ import Util
 import Block1
 
 -- | Function that execute all scripts from directory recursive that end with *.sh and is file
--- executeDir "/home/nikita/IdeaProjects/haskell-itmo-2019-hw3/task1/"
+-- executeDir "/home/nikita/IdeaProjects/georgee/haskell-itmo-2019-hw3/task1/"
 executeDir :: FilePath -> IO()
-executeDir dir = do
-  files <- getDirectoryContents dir
-  iterateIO files
+executeDir = iterateFiles
   where
-    goIfDir :: FilePath -> IO Bool
-    goIfDir file = doesDirectoryExist $ dir <> file
-    goIfShFile :: FilePath -> IO Bool
-    goIfShFile file = do
-      v <- doesFileExist $ dir <> file
+    isShFile :: FilePath -> IO Bool
+    isShFile file = do
+      v <- doesFileExist file
       if v && endswith ".sh" file
         then return True
         else return False
-    iterateIO :: [FilePath] -> IO ()
-    iterateIO (x:xs) =
-      if startswith "." x
-        then iterateIO xs
-        else inner (x : xs)
-      where
-        inner (x:xs) = do
-          result <- goIfDir x
-          if result
-            then executeDir (dir <> x) *> iterateIO xs
-            else executeFile (dir <> x) *> iterateIO xs
-    iterateIO [] = putStrLn $ "end of dir" <> dir
-    executeFile :: FilePath -> IO ()
-    executeFile file = do
-      block1Execute [file]
-      putStrLn file
-      putStrLn "====================="
+
+    dirContent :: FilePath -> IO [FilePath]
+    dirContent path = do
+      v <- doesDirectoryExist path
+      if v
+      then do
+        files <- getDirectoryContents path
+        let filtered = filter (not . startswith ".") files
+        pure $ map (\x -> path <> "/" <> x) filtered
+      else pure mempty
+
+    iterateFiles :: FilePath -> IO ()
+    iterateFiles path = do
+      content <- dirContent path
+      executeFile content
+
+    executeFile :: [FilePath]-> IO ()
+    executeFile (path:xs) =
+      do
+      result <- isShFile path
+      if result
+        then do
+          putStrLn "=============================="
+          putStrLn $ "begin execite file " <> path
+          executeScript [path]
+          putStrLn $ "end execute file " <> path
+          executeFile xs
+        else executeDir path >> executeFile xs
+    executeFile [] = pure ()
