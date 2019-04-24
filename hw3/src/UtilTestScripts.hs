@@ -4,8 +4,6 @@ module UtilTestScripts (
 
 import System.Directory
 import Data.String.Utils
-import Text.Megaparsec
-import Util
 import Block1
 
 -- | Function that execute all scripts from directory recursive that end with *.sh and is file

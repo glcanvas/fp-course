@@ -8,10 +8,7 @@ import Data.Void
 import Text.Megaparsec
 
 import DefineDataTypes
-import UtilAssignValues
 import UtilCommands
-import UtilParserBase
-import Util
 
 
 blockUtilTests :: IO ()

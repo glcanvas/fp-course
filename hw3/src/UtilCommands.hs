@@ -7,9 +7,9 @@ module UtilCommands (
   , parserOneInnerCommand
 )where
 
-import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar, string)
+import Text.Megaparsec.Char (string)
 import Text.Megaparsec
-import Data.Char(isSpace)
+import Data.Char()
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import UtilParserBase
@@ -113,7 +113,7 @@ parserExit :: Parser ShellCommands
 parserExit = InnerCommandConst <$> (isSpaceWithoutEOL *> (Exit <$> (string "exit" *> parserExitCode)))
   where
     parserExitCode :: Parser String
-    parserExitCode = isSpaceWithoutEOL *> (show <$> L.decimal)
+    parserExitCode = isSpaceWithoutEOL *> ((\x -> show (x::Integer)) <$> L.decimal)
 
 -- | function that satisfy one of inner command from block 3
 parserOneInnerCommand :: Parser ShellCommands

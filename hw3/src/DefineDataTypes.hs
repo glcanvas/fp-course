@@ -77,7 +77,6 @@ correctnessZip :: [String] -> [String] -> [(String, String)]
 correctnessZip keys values
   | null keys && not (null values) = []
   | length keys < length values =             -- means that last key will storage all other values
-    let diff = length keys - length values in
       let (ones, others) = splitAt (length keys - 1) values in
         let (backHead : backTail) = reverse keys in
           zip (reverse backTail) ones <> [(backHead, foldl (<>) "" $ fmap (" " <>) others)]

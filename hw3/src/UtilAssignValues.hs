@@ -7,13 +7,8 @@ module UtilAssignValues (
   , briefResolveCommands
 ) where
 
-import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Data.Map as Map
-import Data.Void
 import Text.Megaparsec
-import Data.Maybe (fromMaybe)
-import Data.Either (fromRight)
-import Text.Megaparsec.Char (string)
 
 import UtilParserBase
 import DefineDataTypes
@@ -26,7 +21,7 @@ parserAssign :: Parser Statement
 parserAssign = do
   isSpaceWithoutEOL
   variable <- assignIdentifier
-  single '='
+  _ <- single '='
   AssignRaw variable <$> parserEndOfCommand parserAssignValue
 
 -- | Wrap parsed string in one of "AssignValue"

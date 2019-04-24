@@ -17,9 +17,8 @@ module UtilParserBase (
   , splitStringByNewLine
 ) where
 
-import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec
-import Text.Megaparsec.Char (spaceChar, crlf, newline, space1, letterChar, alphaNumChar, string)
+import Text.Megaparsec.Char (letterChar, alphaNumChar, string)
 import Data.Void
 import Data.Char(isSpace)
 import Data.List
