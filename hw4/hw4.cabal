@@ -19,13 +19,14 @@ tested-with:          GHC == 8.0.1
 
 library
   exposed-modules:    Block1
-                      , Block2
   other-modules:      Paths_hw4
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5
                       , lens
                       , mtl
                       , vector
+                      , loop
+                      , criterion
   default-language:   Haskell2010
 
 executable hw4-exe
@@ -40,10 +41,11 @@ executable hw4-exe
 test-suite hw4-test
   type:               exitcode-stdio-1.0
   main-is:            Main.hs
-  other-modules:      Tests
+  other-modules:      Block1Tests
   hs-source-dirs:      test
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:      base >=4.7 && <5
                       , hw4
                       , hspec
+                      , criterion
   default-language:   Haskell2010
