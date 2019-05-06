@@ -16,19 +16,43 @@ import Criterion.Main
 import Control.Parallel
 import Control.Parallel.Strategies
 
-kek = take 1_000_000 (repeat 4)
-
-lol = runEval $ do
-  a <- rpar kek
-  b <- rpar kek
-  pure (a, b)
+parallelMultiply :: [[Int]] -> [[Int]] -> Maybe [[Int]]
+parallelMultiply m1 m2 =
+  let (m1Row, m1Col) = (getRow m1, getColumn m1) in
+  let (m2Row, m2Col) = (getRow m2, getColumn m2) in
+  let (m1RowLen, m1ColLen) = (Prelude.length m1Row, Prelude.length m1Col) in
+  let (m2RowLen, m2ColLen) = (Prelude.length m2Row, Prelude.length m2Col) in
+    if isVector m1RowLen m1ColLen && isVector m2RowLen m2ColLen
+      then
+        let left = getSingleLine m1Row m1Col m1RowLen m1ColLen in
+        let right = getSingleLine m2Row m2Col m2RowLen m2ColLen in
+          vectorMultiply left right
+      else
+        if not $ canMultiply m1 m2
+          then Nothing
+          else Just $
+            runST $ do
+              vector <- newArray (0, m1RowLen * m2ColLen) 0 :: ST s (STArray s Int Int)
+              let zipM1Row = zip [0..] m1Row
+              let zipM2Col = zip [0..] m2Col
+              Prelude.mapM_
+                (\(i, col) ->
+                  Prelude.mapM_
+                    (\(j, row) -> do
+                      let vectorIdx = i * m2ColLen + j
+                      let value = runEval $ rpar $ singleMultiply col row
+                      writeArray vector vectorIdx value
+                      ) zipM2Col)
+                zipM1Row
+              v <- Prelude.mapM (unsafeRead vector) [0 .. m1RowLen * m2ColLen]
+              pure $ fromList' m2ColLen (Prelude.reverse v)
 
 multiply :: [[Int]] -> [[Int]] -> Maybe [[Int]]
 multiply m1 m2 =
   let (m1Row, m1Col) = (getRow m1, getColumn m1) in
   let (m2Row, m2Col) = (getRow m2, getColumn m2) in
   let (m1RowLen, m1ColLen) = (Prelude.length m1Row, Prelude.length m1Col) in
-   let (m2RowLen, m2ColLen) = (Prelude.length m2Row, Prelude.length m2Col) in
+  let (m2RowLen, m2ColLen) = (Prelude.length m2Row, Prelude.length m2Col) in
     if isVector m1RowLen m1ColLen && isVector m2RowLen m2ColLen
       then
         let left = getSingleLine m1Row m1Col m1RowLen m1ColLen in
@@ -112,8 +136,6 @@ printInfo x =
 canMultiply :: [[a]] -> [[a]] -> Bool
 canMultiply a b = (null a && null b) || (Prelude.length (head a) == Prelude.length b)
 
-c' x y = canMultiply x y
-
 tests a =
   forM_
     [1 .. a]
@@ -121,21 +143,15 @@ tests a =
 
 
 matrixs =
-  Prelude.map (\x -> (x, matrixGenerate x x, matrixGenerate x x)) [5, 10, 50, 100, 250]
+  Prelude.map (\x -> (x, matrixGenerate x x, matrixGenerate x x)) [100, 200, 250]
 
 matrixMult =
   Prelude.map (\(a, l, r) -> bench (show a) $ nf (multiply l) r) matrixs
 
-main' = defaultMain [ {-
+matrixMultPar =
+  Prelude.map (\(a, l, r) -> bench ("parallel "<> show a) $ nf (parallelMultiply l) r) matrixs
 
-  bgroup "matrix generate" [
-    bench "5" $ nf (matrixGenerate 5) 5,
-    bench "10" $ nf (matrixGenerate 10) 10,
-    bench "50" $ nf (matrixGenerate 50) 50,
-    bench "100" $ nf (matrixGenerate 100) 100,
-    bench "500" $ nf (matrixGenerate 500) 500,
-    bench "1000" $ nf (matrixGenerate 1000) 1000
-    ]
--}
-    bgroup "matrix mull" matrixMult
+main' = defaultMain [
+    bgroup "matrix mull parr" matrixMultPar,
+    bgroup "matrix mull single" matrixMult
     ]
