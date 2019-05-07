@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Block1 where
 
@@ -16,35 +16,35 @@ import Criterion.Main
 import Control.Parallel
 import Control.Parallel.Strategies
 
+
 parallelMultiply :: [[Int]] -> [[Int]] -> Maybe [[Int]]
 parallelMultiply m1 m2 =
-  let (m1Row, m1Col) = (getRow m1, getColumn m1) in
-  let (m2Row, m2Col) = (getRow m2, getColumn m2) in
-  let (m1RowLen, m1ColLen) = (Prelude.length m1Row, Prelude.length m1Col) in
-  let (m2RowLen, m2ColLen) = (Prelude.length m2Row, Prelude.length m2Col) in
+  let (!m1Row, !m1Col) = (getRow m1, getColumn m1) in
+  let (!m2Row, !m2Col) = (getRow m2, getColumn m2) in
+  let (!m1RowLen, !m1ColLen) = (Prelude.length m1Row, Prelude.length m1Col) in
+  let (!m2RowLen, !m2ColLen) = (Prelude.length m2Row, Prelude.length m2Col) in
     if isVector m1RowLen m1ColLen && isVector m2RowLen m2ColLen
       then
-        let left = getSingleLine m1Row m1Col m1RowLen m1ColLen in
-        let right = getSingleLine m2Row m2Col m2RowLen m2ColLen in
+        let !left = getSingleLine m1Row m1Col m1RowLen m1ColLen in
+        let !right = getSingleLine m2Row m2Col m2RowLen m2ColLen in
           vectorMultiply left right
       else
         if not $ canMultiply m1 m2
           then Nothing
           else Just $
             runST $ do
-              vector <- newArray (0, m1RowLen * m2ColLen) 0 :: ST s (STArray s Int Int)
-              let zipM1Row = zip [0..] m1Row
-              let zipM2Col = zip [0..] m2Col
+              !vector <- newArray (0,  (*) m1RowLen $! m2ColLen) 0 :: ST s (STArray s Int Int)
+              let !zipM1Row = zip [0..] m1Row
+              let !zipM2Col = zip [0..] m2Col
               Prelude.mapM_
                 (\(i, col) ->
-                  Prelude.mapM_
+                   runEval $ rpar (Prelude.mapM_
                     (\(j, row) -> do
-                      let vectorIdx = i * m2ColLen + j
-                      let value = runEval $ rpar $ singleMultiply col row
-                      writeArray vector vectorIdx value
-                      ) zipM2Col)
+                      let !vectorIdx = (+) ((*) i $! m2ColLen) $! j
+                      writeArray vector vectorIdx (singleMultiply col row)
+                      ) zipM2Col) )
                 zipM1Row
-              v <- Prelude.mapM (unsafeRead vector) [0 .. m1RowLen * m2ColLen]
+              !v <- Prelude.mapM (unsafeRead vector) [0 .. (*) m1RowLen $! m2ColLen]
               pure $ fromList' m2ColLen (Prelude.reverse v)
 
 multiply :: [[Int]] -> [[Int]] -> Maybe [[Int]]
@@ -104,7 +104,7 @@ getColumn :: [[a]] -> [[a]]
 getColumn = transpose
 
 singleMultiply :: [Int] -> [Int] -> Int
-singleMultiply a b = foldl' (\m (a,b) -> m + a * b) (0 :: Int) (Prelude.zip a b)
+singleMultiply a b = foldl (\m (a,b) -> m + a * b) (0 :: Int) (Prelude.zip a b)
 
 
 -- | function that generate matrix with a columns & b rows
@@ -151,7 +151,8 @@ matrixMult =
 matrixMultPar =
   Prelude.map (\(a, l, r) -> bench ("parallel "<> show a) $ nf (parallelMultiply l) r) matrixs
 
+main' :: IO()
 main' = defaultMain [
-    bgroup "matrix mull parr" matrixMultPar,
+    bgroup "matrix mull par" matrixMultPar,
     bgroup "matrix mull single" matrixMult
     ]
