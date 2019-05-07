@@ -20,16 +20,17 @@ tested-with:          GHC == 8.0.1
 library
   exposed-modules:    Block1
                       , Block2
+                      , SimpleMult
   other-modules:      Paths_hw4
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5
                       , lens
                       , mtl
                       , array
-                      , loop
                       , criterion
                       , parallel
                       , deepseq
+                      , foldl
   default-language:   Haskell2010
 
 executable hw4-exe
@@ -51,4 +52,5 @@ test-suite hw4-test
                       , hw4
                       , hspec
                       , criterion
+                      , loop
   default-language:   Haskell2010

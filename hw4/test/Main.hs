@@ -6,4 +6,4 @@ module Main (
 import Block1Tests
 -- | combine all tests from blocks
 main :: IO ()
-main = undefined
+main = evalBench
