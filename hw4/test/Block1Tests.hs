@@ -1,40 +1,39 @@
-module Block1Tests where
+module Block1Tests (
+  testCorrectnesParallel
+  , testCorrectnesSingle
+) where
 
 import Test.Hspec
 import Control.Monad.ST
 import Data.STRef
-import Data.List
 import Control.Loop
 import Criterion.Main
+import Weigh
 
-import qualified Block1 as B1
+import qualified Block1Bench as B1
 import qualified SimpleMult as SM
 
-matrixGenerate :: Int -> Int -> [[Int]]
-matrixGenerate a b
-  | a  > 0 && b > 0 = runST $ do
-    emptyArray <- newSTRef []
-    numLoop 0 (a - 1)
-      (\i -> do
-         let generate = replicate b 0
-         v <- readSTRef emptyArray
-         writeSTRef emptyArray (generate : v))
-    readSTRef emptyArray
-  | otherwise = error "asd"
+commonTests :: ([[Int]] -> [[Int]] -> Maybe [[Int]]) -> IO ()
+commonTests f =
+  hspec $
+    describe "parserExternalCommand" $ do
+      it "single element" $
+        f [[1]] [[1]] `shouldBe` (Just [[1]] :: Maybe [[Int]])
+      it "not equal sizes" $
+        f [[1, 2]] [[1]] `shouldBe` (Nothing :: Maybe [[Int]])
+      it "two vectors" $
+        f [[1, 2]] [[1], [1]] `shouldBe` (Just [[3]] :: Maybe [[Int]])
+      it "vector matrix" $
+        f [[1, 2, 3]] [[1, 1], [1, 1], [1,1]] `shouldBe` (Just [[6, 6]] :: Maybe [[Int]])
+      it "vector matrix reverse" $
+        f [[1, 1], [1, 1], [1,1]] [[1, 2, 3]] `shouldBe` (Nothing :: Maybe [[Int]])
+      it "vector matrix incorrect" $
+        f [[1], [2], [3]] [[1, 1], [1, 1], [1,1]] `shouldBe` (Nothing :: Maybe [[Int]])
+      it "two square matrix" $
+        f [[1, 1], [2, 2]] [[1, 1], [2, 2]] `shouldBe` (Just [[3, 3], [6, 6]] :: Maybe [[Int]])
 
+testCorrectnesParallel :: IO ()
+testCorrectnesParallel = commonTests B1.multiply
 
-matrixs =
-  Prelude.map (\x -> (x, matrixGenerate x x, matrixGenerate x x)) [100, 200, 250, 500]
-
-matrixMult =
-  Prelude.map (\(a, l, r) -> bench ("single "<> show a) $ nf (SM.multiply l) r) matrixs
-
-matrixMultPar =
-  Prelude.map (\(a, l, r) -> bench ("par "<> show a) $ nf (B1.multiply l) r) matrixs
-
-
-evalBench :: IO ()
-evalBench = defaultMain [
-  bgroup "matrix mull par" matrixMultPar,
-  bgroup "matrix mull single" matrixMult
-  ]
+testCorrectnesSingle :: IO ()
+testCorrectnesSingle = commonTests SM.multiply

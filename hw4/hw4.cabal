@@ -19,6 +19,7 @@ tested-with:          GHC == 8.0.1
 
 library
   exposed-modules:    Block1
+                      , Alex
                       , Block2
                       , SimpleMult
   other-modules:      Paths_hw4
@@ -47,10 +48,25 @@ test-suite hw4-test
   main-is:            Main.hs
   other-modules:      Block1Tests
   hs-source-dirs:      test
-  ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
   build-depends:      base >=4.7 && <5
                       , hw4
                       , hspec
                       , criterion
                       , loop
+                      , weigh
+  default-language:   Haskell2010
+
+benchmark hw4-bench
+  type:               exitcode-stdio-1.0
+  main-is:            Main.hs
+  other-modules:      Block1Bench
+  hs-source-dirs:     bench
+  ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
+  build-depends:      base >=4.7 && <5
+                      , hw4
+                      , hspec
+                      , criterion
+                      , loop
+                      , weigh
   default-language:   Haskell2010
