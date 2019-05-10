@@ -3,14 +3,21 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE StrictData #-}
 
-module Block2 where
-
-
+module Block2 (
+    Point(..)
+  , plus
+  , minus
+  , scalarProduct
+  , crossProduct
+  , perimeter
+  , doubleArea
+) where
 
 import Criterion.Main
 import Control.Parallel
 import Control.Parallel.Strategies
 import Data.List
+import Control.Monad.ST
 
 data Point = Point Int Int
 
@@ -21,10 +28,10 @@ minus :: Point -> Point -> Point
 minus (Point !x1 !y1) (Point !x2 !y2) = Point (x1 - x2) (y1 - y2)
 
 scalarProduct :: Point -> Point -> Int
-scalarProduct (Point !x1 !y1) (Point !x2 !y2) = (+) (x1 * x2) $! (y1 * y2)
+scalarProduct (Point !x1 !y1) (Point !x2 !y2) = (x1 * x2) + (y1 * y2)
 
 crossProduct  :: Point -> Point -> Int
-crossProduct (Point !x1 !y1) (Point !x2 !y2) = (-) (x1 * y2) $! (y1 * x2)
+crossProduct (Point !x1 !y1) (Point !x2 !y2) = (x1 * y2) - (y1 * x2)
 
 size :: Point -> Double
 size (Point !x !y) =
@@ -49,13 +56,4 @@ doubleArea (x:xs) =
     res + edgeLen lastPt x
   where
     edgeLen :: Point -> Point -> Int
-    edgeLen (Point !x1 !y1) (Point !x2 !y2) = (x1 - x2) * (y1 + y2)
-
-
-array = map (\x -> Point x x ) [0..10000001]
-bch = [bench "10^7" $ nf perimeter array]
-
-main'' :: IO()
-main'' = defaultMain [
-    bgroup "perimetr" bch
-    ]
+    edgeLen (Point !x1 !y1) (Point !x2 !y2) = (x2 - x1) * (y1 + y2)

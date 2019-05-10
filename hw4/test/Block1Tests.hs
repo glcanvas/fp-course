@@ -4,19 +4,14 @@ module Block1Tests (
 ) where
 
 import Test.Hspec
-import Control.Monad.ST
-import Data.STRef
-import Control.Loop
-import Criterion.Main
-import Weigh
 
-import qualified Block1Bench as B1
+import qualified Block1 as B1
 import qualified SimpleMult as SM
 
 commonTests :: ([[Int]] -> [[Int]] -> Maybe [[Int]]) -> IO ()
 commonTests f =
   hspec $
-    describe "parserExternalCommand" $ do
+    describe "matrix multiply" $ do
       it "single element" $
         f [[1]] [[1]] `shouldBe` (Just [[1]] :: Maybe [[Int]])
       it "not equal sizes" $
