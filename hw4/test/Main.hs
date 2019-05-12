@@ -6,6 +6,7 @@ module Main (
 import Block1Tests
 import Block2Tests
 import Block4Tests
+
 -- | combine all tests from blocks
 main :: IO ()
 main =
@@ -15,3 +16,4 @@ main =
   >> squareTests
   >> testsCHT
   >> bigTestsCHT
+  >> asyncExceptTestsCHT

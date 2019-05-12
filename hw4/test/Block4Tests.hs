@@ -1,11 +1,20 @@
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Block4Tests (
     testsCHT
   , bigTestsCHT
+  , asyncExceptTestsCHT
 ) where
 
 import Test.Hspec
+import Control.Concurrent.Async
+import Control.Exception
+import Data.IORef
 import Block4
+
+data TestException = TestException deriving Show
+instance Exception TestException
 
 testsCHT :: IO ()
 testsCHT = do
@@ -50,3 +59,29 @@ bigTestsCHT = do
               then value `shouldBe` Just (show i)
               else value `shouldBe` Nothing)
           [0 .. 80_000]
+
+
+asyncExceptTestsCHT :: IO ()
+asyncExceptTestsCHT = do
+  cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
+  hspec $
+    describe "throw asyncExcpetion" $
+      it "a lot of exceptions" $ do
+        errors <- newIORef (0 :: Int)
+        mapM_
+          (\i -> do
+            asyncTask <- async $ putCHT i (show i) cht
+            throwTo (asyncThreadId asyncTask) TestException
+            ref <- newIORef False
+            catch (wait asyncTask) (\(_ :: TestException) -> writeIORef ref True)
+            value <- getCHT i cht
+            except' <- readIORef ref
+            if not except'
+              then value `shouldBe` Just (show i)
+              else do
+                err <- readIORef errors
+                writeIORef errors (err + 1)
+                value `shouldBe` Nothing)
+          [0 .. 20_000]
+        err' <- readIORef errors
+        print ("errors = " <> show err')

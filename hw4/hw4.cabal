@@ -61,7 +61,7 @@ test-suite hw4-test
                       , hspec
                       , criterion
                       , loop
-                      , weigh
+                      , async
   default-language:   Haskell2010
 
 benchmark hw4-bench
