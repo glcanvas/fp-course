@@ -69,7 +69,7 @@ benchmark hw4-bench
   main-is:            Main.hs
   other-modules:      Block1Bench
                       , Block2Bench
-                      , Block4Tests
+                      , Block4Bench
   hs-source-dirs:     bench
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
   build-depends:      base >=4.7 && <5
@@ -77,5 +77,4 @@ benchmark hw4-bench
                       , hspec
                       , criterion
                       , loop
-                      , weigh
   default-language:   Haskell2010

@@ -9,6 +9,7 @@ module Block4 (
   , putCHT
   , sizeCHT
   , aaaa
+  , bbbb
 ) where
 
 import Control.Monad
@@ -20,8 +21,11 @@ import Control.Loop
 import Data.STRef
 import GHC.Arr
 import Control.Exception
-import Data.IORef
 import Data.Hashable
+
+
+import Data.IORef
+import Control.Concurrent
 
 data ConcurrentHashTable k v = ConcurrentHashTable {
   size :: TVar Int,
@@ -32,7 +36,7 @@ data ConcurrentHashTable k v = ConcurrentHashTable {
 newCHT :: Hashable k => Eq k => Eq v => IO (ConcurrentHashTable k v)
 newCHT =
   mask_ $ atomically $ do
-    let capacity = 40000
+    let capacity = 2048 -- 40000
     size' <- newTVar (0 :: Int)
     capacity' <- newTVar (capacity :: Int)
     cap <- readTVar capacity'
@@ -135,3 +139,13 @@ aaaa xx = do
       Just _ -> pure ()) [0..10000]
   sto <- sizeCHT cht
   print sto
+
+
+bbbb :: Int -> IO ()
+bbbb  xxx = do
+  print xxx
+  cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
+  mapM_ (\i -> forkIO $ do
+    putCHT i "0" cht) [0..20000]
+  sz <- sizeCHT cht
+  print sz

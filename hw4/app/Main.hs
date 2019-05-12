@@ -7,7 +7,8 @@ import Block4
 import Data.IORef
 
 main :: IO ()
-main = do
+main = bbbb 228
+  {-do
   ref <- newIORef 0
   cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
   mapM_ (\i -> do
@@ -21,3 +22,4 @@ main = do
   print sto
   print ww
 
+  -}
