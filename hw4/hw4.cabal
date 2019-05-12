@@ -20,9 +20,9 @@ tested-with:          GHC == 8.0.1
 library
   exposed-modules:    Block1
                       , Block2
+                      , Block4
                       , SimpleMult
                       , SimpleBlock2
-                      , Block4
   other-modules:      Paths_hw4
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5
@@ -35,7 +35,8 @@ library
                       , stm
                       , vector
                       , loop
-                      , hspec-core
+                      , async
+                      , hashable
   default-language:   Haskell2010
 
 executable hw4-exe
@@ -52,6 +53,7 @@ test-suite hw4-test
   main-is:            Main.hs
   other-modules:      Block1Tests
                       , Block2Tests
+                      , Block4Tests
   hs-source-dirs:      test
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
   build-depends:      base >=4.7 && <5
@@ -67,6 +69,7 @@ benchmark hw4-bench
   main-is:            Main.hs
   other-modules:      Block1Bench
                       , Block2Bench
+                      , Block4Tests
   hs-source-dirs:     bench
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
   build-depends:      base >=4.7 && <5

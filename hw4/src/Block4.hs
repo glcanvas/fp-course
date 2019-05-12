@@ -1,18 +1,27 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ExistentialQuantification#-}
-module Block4 where
+
+module Block4 (
+    ConcurrentHashTable(..)
+  , newCHT
+  , getCHT
+  , putCHT
+  , sizeCHT
+  , aaaa
+) where
 
 import Control.Monad
-import Control.Concurrent
-import Control.Concurrent.Async
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TArray
 import Data.Array
 import Control.Monad.ST
 import Control.Loop
 import Data.STRef
-import GHC.Arr(foldlElems')
+import GHC.Arr
+import Control.Exception
+import Data.IORef
+import Data.Hashable
 
 data ConcurrentHashTable k v = ConcurrentHashTable {
   size :: TVar Int,
@@ -20,33 +29,33 @@ data ConcurrentHashTable k v = ConcurrentHashTable {
   elements :: TVar (Array Int (TVar [(k,v)]))
 }
 
-
-newCHT :: Eq k => Eq v => IO (ConcurrentHashTable k v)
+newCHT :: Hashable k => Eq k => Eq v => IO (ConcurrentHashTable k v)
 newCHT =
-  atomically $ do
+  mask_ $ atomically $ do
+    let capacity = 40000
     size' <- newTVar (0 :: Int)
-    capacity' <- newTVar (10 :: Int)
+    capacity' <- newTVar (capacity :: Int)
     cap <- readTVar capacity'
-    slots' <- replicateM 10 (newTVar [])
-    let arrayHash = listArray (0, 10) slots'
+    slots' <- replicateM (capacity + 1) (newTVar [])
+    let arrayHash = listArray (0, capacity) slots'
     elements' <- newTVar arrayHash
     pure $ ConcurrentHashTable {size = size', capacity = capacity', elements = elements'}
 
 
-getCHT :: Enum k => Eq k => Eq v => k -> ConcurrentHashTable k v -> IO (Maybe v)
+getCHT :: Hashable k => Eq k => Eq v => k -> ConcurrentHashTable k v -> IO (Maybe v)
 getCHT key table@(ConcurrentHashTable htSize htCapacity htElements) =
-  atomically $ do
+  mask_ $ atomically $ do
     capacity' <- readTVar htCapacity
-    let getPosition = fromEnum key `mod` capacity'
+    let getPosition = hash key `mod` capacity'
     array' <- readTVar htElements
     slots' <- readTVar (array' ! getPosition)
     pure $ lookup key slots'
 
-putCHT ::Enum k => Eq k => Eq v => k -> v -> ConcurrentHashTable k v -> IO ()
+putCHT :: Hashable k => Eq k => Eq v => k -> v -> ConcurrentHashTable k v -> IO ()
 putCHT key value (ConcurrentHashTable htSize htCapacity htElements) =
-  atomically $ do
+  mask_ $ atomically $ do
     capacity' <- readTVar htCapacity
-    let getPosition = fromEnum key `mod` capacity'
+    let getPosition = hash key `mod` capacity'
     size' <- readTVar htSize
     array' <- readTVar htElements
     slots' <- readTVar (array' ! getPosition)
@@ -62,16 +71,16 @@ putCHT key value (ConcurrentHashTable htSize htCapacity htElements) =
         >> writeTVar htSize (size' + 1)
         >> if needResize (size' + 1) capacity'
             then do
-              (cap, updArr) <- resizeTable capacity' array'
-              writeTVar htCapacity cap
+              updArr <- resizeTable' capacity' array'
+              writeTVar htCapacity (capacity' * 2)
               writeTVar htElements updArr
               pure ()
             else pure ()
 
-sizeCHT :: ConcurrentHashTable k v -> IO Int
-sizeCHT (ConcurrentHashTable htSize _ _) = atomically $ readTVar htSize
+sizeCHT :: Hashable k => Eq k => Eq v => ConcurrentHashTable k v -> IO Int
+sizeCHT (ConcurrentHashTable htSize _ _) = mask_ $ atomically $ readTVar htSize
 
-replaceSlotByKey :: Enum k => Eq k => Eq v => k -> v -> [(k,v)] -> [(k,v)]
+replaceSlotByKey :: Hashable k => Eq k => Eq v => k -> v -> [(k,v)] -> [(k,v)]
 replaceSlotByKey key value = inner
   where
     inner (link@(key', value') : xs) =
@@ -81,53 +90,48 @@ replaceSlotByKey key value = inner
     inner [] = []
 
 needResize :: Int -> Int -> Bool
-needResize keys capacitys = fromIntegral capacitys * 0.75 <= fromIntegral keys
-
-resizeTable :: Enum k => Eq k => Eq v => Int ->  Array Int (TVar [(k,v)]) -> STM (Int, Array Int (TVar [(k,v)]))
-resizeTable htCapacity htElements = do
-  let newCap' = htCapacity * 2
-  allElements <- foldlElems' (\b a -> do
-      tmp' <- readTVar a
-      tmp <- b
-      pure $ tmp' <> tmp) (pure []) htElements
-  slots' <- compose newCap' allElements
-  let arrayHash = listArray (0, newCap') slots'
-  pure (newCap', arrayHash)
+needResize keys capacitys = fromIntegral capacitys * 0.9  <= fromIntegral keys
 
 
-compose :: Enum k => Eq k => Eq v => Int -> [(k,v)] -> STM [TVar [(k,v)]]
-compose capac a = runST $ do
-  arr <- newSTRef a
-  emptyArray <- newSTRef [] -- ([]::[TVar [(k, v)]])
-  numLoop 0 (capac - 1) (\i -> do
-    xxx <- readSTRef arr
-    let (filtered, other) = customFilterByKey i xxx
-    builded <- readSTRef emptyArray
-    writeSTRef emptyArray (newTVar filtered: builded)
-    writeSTRef arr other)
-  v <- readSTRef emptyArray
-  return $ sequenceA v
+
+resizeTable' :: Hashable k => Eq k => Eq v => Int -> Array Int (TVar [(k,v)]) -> STM(Array Int (TVar [(k,v)]))
+resizeTable' oldCap oldArr =
+  let newCap = oldCap * 2 in
+  replicateM (newCap + 1) (newTVar [])
+    >>=(\buckets ->
+      let arrayHash = listArray (0, newCap) buckets in
+        resizeArray' oldArr arrayHash oldCap newCap
+          >> pure arrayHash)
   where
-    customFilterByKey :: Enum k => Eq k => Eq v => Int -> [(k,v)] -> ([(k,v)], [(k,v)])
-    customFilterByKey key array =
-      let func (x, _) = fromEnum x == key in
-      let left = filter func array in
-      let right = filter (not . func) array in
-          (left, right)
+    resizeArray' oldArr newArr (-1) newCap = pure ()
+    resizeArray' oldArr newArr oldCap newCap = do
+      curList <- readTVar $ oldArr ! oldCap
+      if not $ null curList
+        then pasteList curList newArr newCap >> resizeArray' oldArr newArr (oldCap - 1) newCap
+        else resizeArray' oldArr newArr (oldCap - 1) newCap
+    pasteList list newArr newCap = inner list
+      where
+        inner [] = pure ()
+        inner ((key, value) : xs) =
+          let hashCode = hash key `mod` newCap in
+            readTVar (newArr ! hashCode)
+              >>= (\existElements ->
+                    let newList = (key, value) : existElements in
+                      writeTVar (newArr ! hashCode) newList)
 
-
-aaaa :: IO ()
-aaaa = do
+aaaa :: Integer -> IO ()
+aaaa xx = do
   cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
-  putCHT 0 "a" cht
-  putCHT 1 "b" cht
-  putCHT 2 "c" cht
-  putCHT 3 "d" cht
-  res <- getCHT 0 cht
-  res' <- getCHT 1 cht
-  res'' <- getCHT 2 cht
-  res''' <- getCHT 1488 cht
-  print res
-  print res'
-  print res''
-  print res'''
+  mapM_ (\i -> putCHT i (show i) cht) [0..xx]
+  sto <- sizeCHT cht
+  print sto
+  ref <- newIORef 0
+  cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
+  mapM_ (\i -> do
+    x <- getCHT i cht
+    w <- readIORef ref
+    case x of
+      Nothing -> writeIORef ref (w + 1)
+      Just _ -> pure ()) [0..10000]
+  sto <- sizeCHT cht
+  print sto
