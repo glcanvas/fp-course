@@ -8,6 +8,7 @@ import Test.Hspec
 import qualified Block1 as B1
 import qualified SimpleMult as SM
 
+-- | common tests
 commonTests :: ([[Int]] -> [[Int]] -> Maybe [[Int]]) -> IO ()
 commonTests f =
   hspec $
@@ -27,8 +28,10 @@ commonTests f =
       it "two square matrix" $
         f [[1, 1], [2, 2]] [[1, 1], [2, 2]] `shouldBe` (Just [[3, 3], [6, 6]] :: Maybe [[Int]])
 
+-- | parallel thread test for mult
 testCorrectnesParallel :: IO ()
 testCorrectnesParallel = commonTests B1.multiply
 
+-- | single thread test for mult
 testCorrectnesSingle :: IO ()
 testCorrectnesSingle = commonTests SM.multiply

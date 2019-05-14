@@ -20,6 +20,7 @@ tested-with:          GHC == 8.0.1
 library
   exposed-modules:    Block1
                       , Block2
+                      , Block3
                       , Block4
                       , SimpleMult
                       , SimpleBlock2
@@ -77,4 +78,5 @@ benchmark hw4-bench
                       , hspec
                       , criterion
                       , loop
+                      , async
   default-language:   Haskell2010

@@ -5,5 +5,13 @@ import Block2Bench
 import Block4Bench
 
 main :: IO ()
-main = concurrentReadWriteCHT --perimetrBench
-  -- >> squareBench -- evalBench
+main = do
+  evalBench
+  perimetrBench
+  squareBench
+  concurrentReadCHT
+  readCHT
+  writeCHT
+  concurrentReadCHT
+  concurrentReadWriteCHT
+  concurrentWriteCHT

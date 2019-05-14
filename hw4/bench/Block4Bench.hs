@@ -8,9 +8,8 @@ module Block4Bench (
 
 import Block4
 
-import Control.Concurrent
 import Criterion.Main
-
+import Control.Concurrent.Async
 
 readCHT :: IO ()
 readCHT = defaultMain [bgroup "read tests"
@@ -39,11 +38,12 @@ concurrentReadCHT = defaultMain [bgroup "concurrent read tests"
     inner :: Integer -> IO ()
     inner x = do
       cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
-      mapM_ (\y -> forkIO $ do
+      trds <- mapM (\y -> async $ do
         v <- getCHT y cht
         case v of
           Nothing -> pure ()
           Just _ -> error "ogo") [0 .. x]
+      mapM_ wait trds
 
 concurrentWriteCHT :: IO ()
 concurrentWriteCHT = defaultMain [bgroup "concurrent write "
@@ -52,14 +52,14 @@ concurrentWriteCHT = defaultMain [bgroup "concurrent write "
     inner :: Integer -> IO ()
     inner x = do
       cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
-      mapM_ (\y -> forkIO $ do
+      trds <- mapM (\y -> async $ do
         putCHT y (show y) cht
         size' <- sizeCHT cht
         putStrLn $ show y <> " end"
         if size' <= 0
           then error "ogo"
           else pure ()) [0 .. x]
-
+      mapM_ wait trds
 
 concurrentReadWriteCHT :: IO ()
 concurrentReadWriteCHT = defaultMain [bgroup "concurrent 20 % write 80% read"
@@ -69,12 +69,12 @@ concurrentReadWriteCHT = defaultMain [bgroup "concurrent 20 % write 80% read"
     inner ops threads cht =
       let singleWrite =  round (0.2 * toRational ops) `div` threads in
       let singleRead = round (0.8 * toRational ops) `div` threads in
-      mapM_ (\_ -> forkIO $ singleThread singleWrite singleRead) [0 .. threads]
+      mapM (\_ -> async $ singleThread singleWrite singleRead) [0 .. threads] >>= mapM_ wait
       where
         singleThread writeOps readOps =
           let cycle' = (writeOps `mod` readOps) + 1 in do
           table <- cht
-          mapM_ (\y ->
+          mapM (\y ->
             if y `mod` cycle'  == 0
               then putCHT y (show y) table
               else

@@ -6,6 +6,7 @@ module Block2Tests (
 import Block2
 import Test.Hspec
 
+-- | tests for perimetr
 perimeterTests :: IO ()
 perimeterTests =
   hspec $
@@ -21,7 +22,7 @@ perimeterTests =
       it "line" $
         perimeter (map (Point 0) [0 .. 100]) `shouldBe` (200 :: Double)
 
-
+-- | tests for square
 squareTests :: IO ()
 squareTests =
   hspec $

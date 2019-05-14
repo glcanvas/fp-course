@@ -13,9 +13,11 @@ import Control.Exception
 import Data.IORef
 import Block4
 
+-- | error for async exception
 data TestException = TestException deriving Show
 instance Exception TestException
 
+-- | tests for ConcurrentHashTable
 testsCHT :: IO ()
 testsCHT = do
   cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
@@ -38,7 +40,7 @@ testsCHT = do
         v <- getCHT 1 cht
         v `shouldBe` (Just "2" :: Maybe String)
 
-
+-- | hight loaded tests
 bigTestsCHT :: IO ()
 bigTestsCHT = do
   cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
@@ -60,7 +62,7 @@ bigTestsCHT = do
               else value `shouldBe` Nothing)
           [0 .. 80_000]
 
-
+-- | throw async exception test
 asyncExceptTestsCHT :: IO ()
 asyncExceptTestsCHT = do
   cht <- newCHT :: (IO (ConcurrentHashTable Integer String))

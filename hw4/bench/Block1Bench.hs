@@ -10,6 +10,7 @@ import Data.STRef
 import Control.Loop
 import Criterion.Main
 
+-- | generate matrix
 matrixGenerate :: Int -> Int -> [[Int]]
 matrixGenerate a b
   | a  > 0 && b > 0 = runST $ do
@@ -22,6 +23,7 @@ matrixGenerate a b
     readSTRef emptyArray
   | otherwise = error "row/column must be more than 0"
 
+-- | evaluate tests
 evalBench :: IO ()
 evalBench = defaultMain [
   bgroup "matrix mull par" matrixMultPar,

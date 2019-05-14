@@ -3,8 +3,8 @@
 {-# LANGUAGE Strict#-}
 
 module Block1 (
-  multiply
-  ) where
+    multiply
+) where
 
 import Control.Monad.ST
 import Data.STRef
@@ -14,6 +14,7 @@ import Control.Parallel
 import Control.Parallel.Strategies
 import qualified Control.Foldl as F
 
+-- | function that multiply two matrix and return new matrix or Nothing if their size not comarable
 multiply :: [[Int]] -> [[Int]] -> Maybe [[Int]]
 multiply m1 m2 =
   let rows = m1 in
@@ -33,15 +34,15 @@ multiply m1 m2 =
     fastLength [] = 0
     fastLength (x:xs) = length x
 
-getRow:: [[a]] -> [[a]]
-getRow = id
+    getRow:: [[a]] -> [[a]]
+    getRow = id
 
-getColumn :: [[a]] -> [[a]]
-getColumn = transpose
+    getColumn :: [[a]] -> [[a]]
+    getColumn = transpose
 
-singleMultiply :: [Int] -> [Int] -> Int
-singleMultiply a b = foldl' (\m (a,b) -> m + a * b) (0 :: Int) (Prelude.zip a b)
+    singleMultiply :: [Int] -> [Int] -> Int
+    singleMultiply a b = foldl' (\m (a,b) -> m + a * b) (0 :: Int) (Prelude.zip a b)
 
 
-canMultiply :: [[a]] -> [[a]] -> Bool
-canMultiply a b = Prelude.length (head a) == Prelude.length b
+    canMultiply :: [[a]] -> [[a]] -> Bool
+    canMultiply a b = Prelude.length (head a) == Prelude.length b

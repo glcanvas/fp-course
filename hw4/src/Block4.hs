@@ -8,8 +8,6 @@ module Block4 (
   , getCHT
   , putCHT
   , sizeCHT
-  , aaaa
-  , bbbb
 ) where
 
 import Control.Monad
@@ -22,17 +20,17 @@ import Data.STRef
 import GHC.Arr
 import Control.Exception
 import Data.Hashable
-
-
 import Data.IORef
 import Control.Concurrent
 
+-- | data type for ConcurrentHashTable
 data ConcurrentHashTable k v = ConcurrentHashTable {
   size :: TVar Int,
   capacity :: TVar Int,
   elements :: TVar (Array Int (TVar [(k,v)]))
 }
 
+-- | function that create new ConcurrentHashTable
 newCHT :: Hashable k => Eq k => Eq v => IO (ConcurrentHashTable k v)
 newCHT =
   mask_ $ atomically $ do
@@ -45,7 +43,7 @@ newCHT =
     elements' <- newTVar arrayHash
     pure $ ConcurrentHashTable {size = size', capacity = capacity', elements = elements'}
 
-
+-- | get element from ConcurrentHashTable
 getCHT :: Hashable k => Eq k => Eq v => k -> ConcurrentHashTable k v -> IO (Maybe v)
 getCHT key table@(ConcurrentHashTable htSize htCapacity htElements) =
   mask_ $ atomically $ do
@@ -55,6 +53,7 @@ getCHT key table@(ConcurrentHashTable htSize htCapacity htElements) =
     slots' <- readTVar (array' ! getPosition)
     pure $ lookup key slots'
 
+-- | add or rewrite element in ConcurrentHashTable
 putCHT :: Hashable k => Eq k => Eq v => k -> v -> ConcurrentHashTable k v -> IO ()
 putCHT key value (ConcurrentHashTable htSize htCapacity htElements) =
   mask_ $ atomically $ do
@@ -81,6 +80,7 @@ putCHT key value (ConcurrentHashTable htSize htCapacity htElements) =
               pure ()
             else pure ()
 
+-- | get size of ConcurrentHashTable
 sizeCHT :: Hashable k => Eq k => Eq v => ConcurrentHashTable k v -> IO Int
 sizeCHT (ConcurrentHashTable htSize _ _) = mask_ $ atomically $ readTVar htSize
 
@@ -95,8 +95,6 @@ replaceSlotByKey key value = inner
 
 needResize :: Int -> Int -> Bool
 needResize keys capacitys = fromIntegral capacitys * 0.9  <= fromIntegral keys
-
-
 
 resizeTable' :: Hashable k => Eq k => Eq v => Int -> Array Int (TVar [(k,v)]) -> STM(Array Int (TVar [(k,v)]))
 resizeTable' oldCap oldArr =
@@ -122,30 +120,3 @@ resizeTable' oldCap oldArr =
               >>= (\existElements ->
                     let newList = (key, value) : existElements in
                       writeTVar (newArr ! hashCode) newList)
-
-aaaa :: Integer -> IO ()
-aaaa xx = do
-  cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
-  mapM_ (\i -> putCHT i (show i) cht) [0..xx]
-  sto <- sizeCHT cht
-  print sto
-  ref <- newIORef 0
-  cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
-  mapM_ (\i -> do
-    x <- getCHT i cht
-    w <- readIORef ref
-    case x of
-      Nothing -> writeIORef ref (w + 1)
-      Just _ -> pure ()) [0..10000]
-  sto <- sizeCHT cht
-  print sto
-
-
-bbbb :: Int -> IO ()
-bbbb  xxx = do
-  print xxx
-  cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
-  mapM_ (\i -> forkIO $ do
-    putCHT i "0" cht) [0..20000]
-  sz <- sizeCHT cht
-  print sz

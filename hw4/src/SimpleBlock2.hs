@@ -17,6 +17,8 @@ import Control.Parallel.Strategies
 import Data.List
 import Control.Monad.ST
 
+-- | all function is lazy and whorse than functions from Block2
+-- need for show performance
 data Point = Point Int Int
 
 plus :: Point -> Point -> Point
@@ -55,8 +57,6 @@ perimeter (x:xs) = commonFunc (\(ptr, per) a -> (a, per + edgeLen ptr a)) (x:xs)
 doubleArea :: [Point] -> Int
 doubleArea [] = 0
 doubleArea (x:xs) = commonFunc (\(ptr, per) a -> (a, per + edgeLen ptr a)) (x:xs)
-  --  let (lastPt, res) = foldl' (\(ptr, per) a -> (a, per + edgeLen ptr a)) (x, 0) xs in
-  --  res + edgeLen lastPt x
   where
     edgeLen :: Point -> Point -> Int
     edgeLen (Point x1 y1) (Point x2 y2) = (x1 - x2) * (y1 + y2)
