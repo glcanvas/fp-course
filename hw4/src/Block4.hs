@@ -12,16 +12,9 @@ module Block4 (
 
 import Control.Monad
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TArray
 import Data.Array
-import Control.Monad.ST
-import Control.Loop
-import Data.STRef
-import GHC.Arr
 import Control.Exception
 import Data.Hashable
-import Data.IORef
-import Control.Concurrent
 
 -- | data type for ConcurrentHashTable
 data ConcurrentHashTable k v = ConcurrentHashTable {
@@ -34,18 +27,17 @@ data ConcurrentHashTable k v = ConcurrentHashTable {
 newCHT :: Hashable k => Eq k => Eq v => IO (ConcurrentHashTable k v)
 newCHT =
   mask_ $ atomically $ do
-    let capacity = 2048 -- 40000
+    let capacityLength = 2048
     size' <- newTVar (0 :: Int)
-    capacity' <- newTVar (capacity :: Int)
-    cap <- readTVar capacity'
-    slots' <- replicateM (capacity + 1) (newTVar [])
-    let arrayHash = listArray (0, capacity) slots'
+    capacity' <- newTVar (capacityLength :: Int)
+    slots' <- replicateM (capacityLength + 1) (newTVar [])
+    let arrayHash = listArray (0, capacityLength) slots'
     elements' <- newTVar arrayHash
     pure $ ConcurrentHashTable {size = size', capacity = capacity', elements = elements'}
 
 -- | get element from ConcurrentHashTable
 getCHT :: Hashable k => Eq k => Eq v => k -> ConcurrentHashTable k v -> IO (Maybe v)
-getCHT key table@(ConcurrentHashTable htSize htCapacity htElements) =
+getCHT key (ConcurrentHashTable _ htCapacity htElements) =
   mask_ $ atomically $ do
     capacity' <- readTVar htCapacity
     let getPosition = hash key `mod` capacity'
@@ -87,25 +79,25 @@ sizeCHT (ConcurrentHashTable htSize _ _) = mask_ $ atomically $ readTVar htSize
 replaceSlotByKey :: Hashable k => Eq k => Eq v => k -> v -> [(k,v)] -> [(k,v)]
 replaceSlotByKey key value = inner
   where
-    inner (link@(key', value') : xs) =
+    inner (link@(key', _) : xs) =
       if key == key'
         then (key, value) : xs
         else link : inner xs
     inner [] = []
 
 needResize :: Int -> Int -> Bool
-needResize keys capacitys = fromIntegral capacitys * 0.9  <= fromIntegral keys
+needResize keys capacitys = fromIntegral capacitys * (0.9 ::Double) <= fromIntegral keys
 
 resizeTable' :: Hashable k => Eq k => Eq v => Int -> Array Int (TVar [(k,v)]) -> STM(Array Int (TVar [(k,v)]))
-resizeTable' oldCap oldArr =
-  let newCap = oldCap * 2 in
+resizeTable' oldCap' oldArr' =
+  let newCap = oldCap' * 2 in
   replicateM (newCap + 1) (newTVar [])
     >>=(\buckets ->
       let arrayHash = listArray (0, newCap) buckets in
-        resizeArray' oldArr arrayHash oldCap newCap
+        resizeArray' oldArr' arrayHash oldCap' newCap
           >> pure arrayHash)
   where
-    resizeArray' oldArr newArr (-1) newCap = pure ()
+    resizeArray' _ _ (-1) _ = pure ()
     resizeArray' oldArr newArr oldCap newCap = do
       curList <- readTVar $ oldArr ! oldCap
       if not $ null curList
@@ -114,7 +106,7 @@ resizeTable' oldCap oldArr =
     pasteList list newArr newCap = inner list
       where
         inner [] = pure ()
-        inner ((key, value) : xs) =
+        inner ((key, value) : _) =
           let hashCode = hash key `mod` newCap in
             readTVar (newArr ! hashCode)
               >>= (\existElements ->

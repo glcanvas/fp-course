@@ -31,8 +31,8 @@ evalBench = defaultMain [
   ]
   where
   matrixs =
-    Prelude.map (\x -> (x, matrixGenerate x x, matrixGenerate x x)) [100, 200, 250, 500, 1000]
+    map (\x -> (x, matrixGenerate x x, matrixGenerate x x)) [100, 200, 250, 500]
   matrixMult =
-    Prelude.map (\(a, l, r) -> bench ("single "<> show a) $ nf (SM.multiply l) r) matrixs
+    map (\(a, l, r) -> bench ("single "<> show a) $ nf (SM.multiply l) r) matrixs
   matrixMultPar =
-    Prelude.map (\(a, l, r) -> bench ("par "<> show a) $ nf (B1.multiply l) r) matrixs
+    map (\(a, l, r) -> bench ("par "<> show a) $ nf (B1.multiply l) r) matrixs

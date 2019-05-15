@@ -11,12 +11,6 @@ module SimpleBlock2 (
   , doubleArea
 ) where
 
-import Criterion.Main
-import Control.Parallel
-import Control.Parallel.Strategies
-import Data.List
-import Control.Monad.ST
-
 -- | all function is lazy and whorse than functions from Block2
 -- need for show performance
 data Point = Point Int Int

@@ -54,6 +54,7 @@ test-suite hw4-test
   main-is:            Main.hs
   other-modules:      Block1Tests
                       , Block2Tests
+                      , Block3Tests
                       , Block4Tests
   hs-source-dirs:      test
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
@@ -70,6 +71,7 @@ benchmark hw4-bench
   main-is:            Main.hs
   other-modules:      Block1Bench
                       , Block2Bench
+                      , Block3Bench
                       , Block4Bench
   hs-source-dirs:     bench
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6

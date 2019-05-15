@@ -5,6 +5,7 @@ module Main (
 
 import Block1Tests
 import Block2Tests
+import Block3Tests
 import Block4Tests
 
 -- | combine all tests from blocks
@@ -14,6 +15,7 @@ main =
   >> testCorrectnesSingle
   >> perimeterTests
   >> squareTests
+  >> gaussTests
   >> testsCHT
   >> bigTestsCHT
   >> asyncExceptTestsCHT

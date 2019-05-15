@@ -55,7 +55,6 @@ concurrentWriteCHT = defaultMain [bgroup "concurrent write "
       trds <- mapM (\y -> async $ do
         putCHT y (show y) cht
         size' <- sizeCHT cht
-        putStrLn $ show y <> " end"
         if size' <= 0
           then error "ogo"
           else pure ()) [0 .. x]

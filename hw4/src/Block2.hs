@@ -13,11 +13,7 @@ module Block2 (
   , doubleArea
 ) where
 
-import Criterion.Main
-import Control.Parallel
-import Control.Parallel.Strategies
 import Data.List
-import Control.Monad.ST
 
 -- | data type for point
 data Point = Point Int Int

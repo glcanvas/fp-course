@@ -66,7 +66,7 @@ multiply m1 m2 =
   getColumn = transpose
 
   singleMultiply :: [Int] -> [Int] -> Int
-  singleMultiply a b = foldl (\m (a,b) -> m + a * b) (0 :: Int) (Prelude.zip a b)
+  singleMultiply a b = foldl (\m (a', b') -> m + a' * b') (0 :: Int) (Prelude.zip a b)
 
 
   canMultiply :: [[a]] -> [[a]] -> Bool
