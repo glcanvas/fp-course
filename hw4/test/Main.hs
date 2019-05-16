@@ -2,7 +2,6 @@ module Main (
   main
 ) where
 
-
 import Block1Tests
 import Block2Tests
 import Block3Tests

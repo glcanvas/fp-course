@@ -5,7 +5,6 @@ module Block3Bench (
 import Criterion.Main
 import Block3
 
-
 generateMatrix :: Int -> [[Bool]]
 generateMatrix n = mapM (\i -> replicate i False <> replicate (n - i) True) [0 .. (n - 1)]
 

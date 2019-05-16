@@ -1,4 +1,6 @@
-module Main where
+module Main (
+    main
+) where
 
 -- | simple main function
 main :: IO ()

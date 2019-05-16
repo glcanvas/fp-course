@@ -1,6 +1,6 @@
 module SimpleMult (
   multiply
-  ) where
+) where
 
 import Control.Monad.ST
 import Data.STRef
@@ -67,7 +67,6 @@ multiply m1 m2 =
 
   singleMultiply :: [Int] -> [Int] -> Int
   singleMultiply a b = foldl (\m (a', b') -> m + a' * b') (0 :: Int) (Prelude.zip a b)
-
 
   canMultiply :: [[a]] -> [[a]] -> Bool
   canMultiply a b = (null a && null b) || (Prelude.length (head a) == Prelude.length b)

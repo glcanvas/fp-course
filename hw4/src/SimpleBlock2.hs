@@ -35,7 +35,6 @@ size (Point x y) =
 commonFunc :: Num a =>  ((Point, a) -> Point -> (Point, a)) -> [Point] -> a
 commonFunc func = inner
   where
-  --inner :: forall a . Num a =>  [Point] -> a
   inner [] = 0
   inner (x:xs) =
     let (_, y) = foldl func (x, 0) (xs ++ [x]) in

@@ -1,4 +1,6 @@
-module Main where
+module Main (
+    main
+) where
 
 import Block1Bench
 import Block2Bench

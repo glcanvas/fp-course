@@ -1,6 +1,9 @@
 {-# LANGUAGE Strict #-}
 
-module Block3 where
+module Block3 (
+    gauss
+  , verifySolution
+) where
 
 import Control.Parallel.Strategies
 
@@ -61,6 +64,6 @@ xor x y = (x || y) && not (x && y)
 -- | function verify that matrix x vector equal other vector
 verifySolution :: [[Bool]] -> [Bool] -> [Bool] -> Bool
 verifySolution a x y = inner a x == y
-
-inner rows column = foldl (\b a' -> multiply' column a' : b) [] rows
-multiply' row1 row2 = foldl xor False (zipWith (&&) row1 row2)
+  where
+    inner rows column = foldl (\b a' -> multiply' column a' : b) [] rows
+    multiply' row1 row2 = foldl xor False (zipWith (&&) row1 row2)

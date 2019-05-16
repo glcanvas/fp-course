@@ -1,6 +1,5 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ExistentialQuantification#-}
 
 module Block4 (
     ConcurrentHashTable(..)

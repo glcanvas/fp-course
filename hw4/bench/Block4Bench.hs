@@ -20,7 +20,6 @@ readCHT = defaultMain [bgroup "read tests"
       cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
       mapM_ (`getCHT` cht) [0 .. x]
 
-
 writeCHT :: IO ()
 writeCHT = defaultMain [bgroup "write tests"
   $ map (\x -> bench ("write " <> show x) $ nfIO (inner x)) [100, 1000, 2000, 4000, 5000, 10000, 20000]]
@@ -29,7 +28,6 @@ writeCHT = defaultMain [bgroup "write tests"
     inner x = do
       cht <- newCHT :: (IO (ConcurrentHashTable Integer String))
       mapM_ (\y -> putCHT y (show y) cht) [0 .. x]
-
 
 concurrentReadCHT :: IO ()
 concurrentReadCHT = defaultMain [bgroup "concurrent read tests"
