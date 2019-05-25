@@ -56,7 +56,7 @@ test-suite hw4-test
                       , Block2Tests
                       , Block3Tests
                       , Block4Tests
-  hs-source-dirs:      test
+  hs-source-dirs:     test
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N6
   build-depends:      base >=4.7 && <5
                       , hw4
