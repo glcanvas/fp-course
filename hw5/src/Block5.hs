@@ -45,12 +45,13 @@ choosing l1 l2 f s =
 
 (<%~) :: Lens s t a b -> (a -> b) -> s -> (b, t)
 (<%~) l f s =
-  let kk = view' l s in
-    let b' = f kk in
-      let t' = set' l b' s in
-        (b', t')
-  where
-    view' :: Lens s t a b -> s -> a
-    view' lns object = getConst $ lns Const object
-    set' :: Lens s t a b -> b -> s -> t
-    set' l b s = runIdentity $ l (\_ -> Identity b) s
+  let b' = f (getConst $ l Const s) in
+    let t' = runIdentity $ l (\_ -> Identity b') s in
+      (b', t')
+
+(<<%~) :: Lens s t a b -> (a -> b) -> s -> (a, t)
+(<<%~) l f s =
+  let a' = getConst $ l Const s in
+    let b' = f a' in
+      let t' = runIdentity $ l (\_ -> Identity b') s in
+        (a', t')
