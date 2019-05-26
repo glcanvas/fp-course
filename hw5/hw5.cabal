@@ -20,12 +20,12 @@ tested-with:          GHC == 8.0.1
 library
   exposed-modules:    Block1
                       , Block5
+                      , Block6
   other-modules:      Paths_hw5
   hs-source-dirs:     src
   build-depends:      base >=4.7 && <5
-                      , mtl
-                      , containers
-                      , lens
+                      , microlens
+                      , directory
   default-language:   Haskell2010
 
 executable hw5-exe

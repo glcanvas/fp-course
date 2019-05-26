@@ -1,7 +1,22 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
-module Block5 where
+module Block5 (
+    Lens
+  , Lens'
+  , set
+  , view
+  , over
+  , (.~)
+  , (^.)
+  , (%~)
+  , _1
+  , _2
+  , lens
+  , choosing
+  , (<%~)
+  , (<<%~)
+) where
 
 import Data.Functor.Identity
 import Data.Functor.Const
@@ -35,7 +50,7 @@ _2 :: Lens (x, a) (x, b) a b
 _2 func (x, a) = (x, ) <$> func a
 
 lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
-lens get set f s = set s <$> f (get s)
+lens gt st f s = st s <$> f (gt s)
 
 choosing :: Lens s1 t1 a b -> Lens s2 t2 a b -> Lens (Either s1 s2) (Either t1 t2) a b
 choosing l1 l2 f s =
