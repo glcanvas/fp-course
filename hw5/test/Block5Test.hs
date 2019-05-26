@@ -10,7 +10,7 @@ newtype B = B Char deriving (Show, Eq)
 
 lensCombineTests :: IO ()
 lensCombineTests =
-  lensTest >> lensSetGetTest
+  lensTest >> lensSetGetTest >> hardLensTest
 
 lensSetGetTest :: IO ()
 lensSetGetTest =
@@ -33,6 +33,13 @@ lensTest =
     it "B update Char" $
       set (lensAB.lensBChar) 'b' (A 1 (B 'a')) `shouldBe` (A 1 (B 'b') :: A)
 
+hardLensTest :: IO ()
+hardLensTest =
+  hspec $
+    describe "hard lens" $ do
+      it "choosing Left" $ view lensChoose (Left (B 'a')) `shouldBe` ('a' :: Char)
+      it "choosing Right" $ view lensChoose (Right (A 1 (B 'a'))) `shouldBe` ('a' :: Char)
+
 lensAInt :: Lens A A Int Int
 lensAInt = lens getAInt setAInt
 
@@ -41,6 +48,9 @@ lensAB = lens getAB setAB
 
 lensBChar :: Lens B B Char Char
 lensBChar = lens getBChar setBChar
+
+lensChoose :: Lens (Either B A) (Either B A) Char Char
+lensChoose = choosing lensBChar (lensAB . lensBChar)
 
 getAInt :: A -> Int
 getAInt (A x _) = x
@@ -59,3 +69,4 @@ getBChar (B x) = x
 
 setBChar :: B -> Char -> B
 setBChar (B _) = B
+
