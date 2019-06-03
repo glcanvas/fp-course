@@ -18,8 +18,8 @@ module Block5 (
   , (<<%~)
 ) where
 
-import Data.Functor.Identity
-import Data.Functor.Const
+import Data.Functor.Identity (Identity(..))
+import Data.Functor.Const (Const(..))
 
 type Lens s t a b = forall f . Functor f => (a -> f b) -> s -> f t
 
