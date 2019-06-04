@@ -7,6 +7,8 @@ import Lens.Micro.Internal -- (each)
 import Lens.Micro.Extras
 import Lens.Micro.Type
 
+import Data.List (isSuffixOf)
+
 type FullPath = FilePath
 type ShortPath = FilePath
 
@@ -83,3 +85,16 @@ file path func = contentLens $ traversed (filtered predicate (nameLens func))
     predicate :: FS -> Bool
     predicate fl@(File _) = fl ^. nameLens == path
     predicate _ = False
+
+changeSuffix :: String -> String -> Traversal' FS FS
+changeSuffix begin after func =
+  (contentLens . each . filtered predicate) (func . over nameLens (\y -> take (length y - length begin) y ++ after))
+  where
+    predicate :: FS -> Bool
+    predicate fl@(File _) = begin `isSuffixOf` (fl ^. nameLens)
+    predicate _ = False
+
+aaa =  do
+  a <- getDirectory "/home/nikita/IdeaProjects/fp-homework-templates/hw4/src"
+  let c = a ^.. changeSuffix ".hs" ".heh"
+  print $ map (\x -> getName x) c
