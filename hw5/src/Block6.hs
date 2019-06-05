@@ -7,6 +7,8 @@ import Lens.Micro.Internal -- (each)
 import Lens.Micro.Extras
 import Lens.Micro.Type
 
+import Data.Functor.Identity
+
 import Data.List (isSuffixOf)
 
 type FullPath = FilePath
@@ -86,15 +88,34 @@ file path func = contentLens $ traversed (filtered predicate (nameLens func))
     predicate fl@(File _) = fl ^. nameLens == path
     predicate _ = False
 
-changeSuffix :: String -> String -> Traversal' FS FS
-changeSuffix begin after func =
-  (contentLens . each . filtered predicate) (func . over nameLens (\y -> take (length y - length begin) y ++ after))
+changeSuffix :: String -> String -> FS -> FS
+changeSuffix begin after fs = runIdentity $
+  (contentLens . traversed . filtered predicate . nameLens) (Identity . replaceFunc) fs
   where
     predicate :: FS -> Bool
     predicate fl@(File _) = begin `isSuffixOf` (fl ^. nameLens)
     predicate _ = False
 
+    replaceFunc :: FilePath -> FilePath
+    replaceFunc y = take (length y - length begin) y ++ after
+
+fileList :: FS -> [FilePath]
+fileList (File name') = pure name'
+fileList fs = (fs ^. nameLens) : concatMap fileList (fs ^.. contentLens . traversed)
+
+deleteDir :: FilePath -> FS -> FS
+deleteDir path fs =
+   (.~) contentLens (filter (not . predicate) (fs ^. contentLens)) fs
+  where
+    predicate :: FS -> Bool
+    predicate dir@(Dir _ _) = dir ^. nameLens == path && null (dir ^. contentLens)
+    predicate _ = False
+
 aaa =  do
-  a <- getDirectory "/home/nikita/IdeaProjects/fp-homework-templates/hw4/src"
-  let c = a ^.. changeSuffix ".hs" ".heh"
-  print $ map (\x -> getName x) c
+  a <- getDirectory "/home/nikita/IdeaProjects/fp-homework-templates/hw4"
+  let c = deleteDir "a" a
+  print c
+
+bbb =
+  let a = Dir {name="a", contents=[Dir {name="a", contents=[]}, Dir{name="a", contents=[File {name="a"}]}]} in
+    deleteDir "a" a
