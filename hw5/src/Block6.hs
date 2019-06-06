@@ -2,20 +2,17 @@
 module Block6 where
 
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import Lens.Micro -- (Lens', Lens, Traversal', filtered, traversed, (^.), lens)
-import Lens.Micro.Internal -- (each)
-import Lens.Micro.Extras
-import Lens.Micro.Type
+import Lens.Micro (Lens', Lens, Traversal', filtered, traversed, (^.), lens, (^..), (.~))
+import Lens.Micro.Internal (each)
 
-import Data.Functor.Identity
+import Data.Functor.Identity (Identity(..))
 
 import Data.List (isSuffixOf)
 
 type FullPath = FilePath
 type ShortPath = FilePath
 
-data FS
-  = Dir {name :: FilePath, contents :: [FS]} | File {name :: FilePath} deriving (Show, Eq)
+data FS = Dir {name :: FilePath, contents :: [FS]} | File {name :: FilePath} deriving (Show, Eq)
 
 getDirectory :: FullPath -> IO FS
 getDirectory path = getDirectory' path mempty
@@ -23,14 +20,10 @@ getDirectory path = getDirectory' path mempty
     getDirectory' :: FullPath -> ShortPath -> IO FS
     getDirectory' full short = do
       let combinePath = if short == mempty then full else full <> "/" <> short
-      file <- doesFileExist combinePath
       dir <- doesDirectoryExist combinePath
-      if file
-        then buildForFile full short
-        else
-          if dir
-            then buildForDir full short
-            else error "ето шо такое?"
+      if dir
+        then buildForDir full short
+        else buildForFile full short
 
     buildForFile :: FullPath -> ShortPath -> IO FS
     buildForFile full short = do
@@ -46,21 +39,17 @@ getDirectory path = getDirectory' path mempty
       listOfDirs <- mapM (getDirectory' fsCombinePath) updWay
       pure $ Dir {name = combinePath, contents = listOfDirs}
 
--- | getter for name lens
 getName :: FS -> FilePath
 getName (Dir name _) = name
 getName (File name) = name
 
--- | setter for name lens
 setName :: FS -> FilePath -> FS
 setName (Dir _ ct) newName = Dir newName ct
 setName (File _) newName = File newName
 
-
 getContent :: FS -> [FS]
 getContent (Dir _ ct) = ct
 
--- | setter for content lens
 setContent :: FS -> [FS] -> FS
 setContent (Dir name _) = Dir name
 
@@ -69,7 +58,6 @@ nameLens = lens getName setName
 
 contentLens :: Lens' FS [FS]
 contentLens = lens getContent setContent
-
 
 cd :: FilePath -> Traversal' FS FS
 cd path func = contentLens $ traversed (filtered predicate func)
@@ -110,12 +98,3 @@ deleteDir path fs =
     predicate :: FS -> Bool
     predicate dir@(Dir _ _) = dir ^. nameLens == path && null (dir ^. contentLens)
     predicate _ = False
-
-aaa =  do
-  a <- getDirectory "/home/nikita/IdeaProjects/fp-homework-templates/hw4"
-  let c = deleteDir "a" a
-  print c
-
-bbb =
-  let a = Dir {name="a", contents=[Dir {name="a", contents=[]}, Dir{name="a", contents=[File {name="a"}]}]} in
-    deleteDir "a" a
