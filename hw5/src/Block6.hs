@@ -1,8 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 module Block6 where
 
-import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import Lens.Micro (Lens', Lens, Traversal', filtered, traversed, (^.), lens, (^..), (.~))
+import System.Directory (doesDirectoryExist, getDirectoryContents)
+import Lens.Micro (Lens', Traversal', filtered, traversed, (^.), lens, (^..), (.~))
 import Lens.Micro.Internal (each)
 
 import Data.Functor.Identity (Identity(..))
@@ -40,8 +40,8 @@ getDirectory path = getDirectory' path mempty
       pure $ Dir {name = combinePath, contents = listOfDirs}
 
 getName :: FS -> FilePath
-getName (Dir name _) = name
-getName (File name) = name
+getName (Dir name' _) = name'
+getName (File name') = name'
 
 setName :: FS -> FilePath -> FS
 setName (Dir _ ct) newName = Dir newName ct
@@ -49,9 +49,11 @@ setName (File _) newName = File newName
 
 getContent :: FS -> [FS]
 getContent (Dir _ ct) = ct
+getContent (File _) = error "not content in File"
 
 setContent :: FS -> [FS] -> FS
-setContent (Dir name _) = Dir name
+setContent (Dir name' _) = Dir name'
+setContent (File _) = error "not content in File"
 
 nameLens :: Lens' FS FilePath
 nameLens = lens getName setName

@@ -18,8 +18,7 @@ tested-with:          GHC == 8.0.1
 
 
 library
-  exposed-modules:    Block1
-                      , Block5
+  exposed-modules:    Block5
                       , Block6
   other-modules:      Paths_hw5
   hs-source-dirs:     src
