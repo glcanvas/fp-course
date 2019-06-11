@@ -28,6 +28,10 @@ library
                       , network-simple
                       , megaparsec
                       , containers
+                      , bytestring
+                      , text
+                      , ctrie
+                      , stm
   default-language:   Haskell2010
 
 executable project-exe

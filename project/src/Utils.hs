@@ -2,13 +2,14 @@
 
 module Utils (
   readProperties
+  , checkKeys
 ) where
 
 import Text.Megaparsec (Parsec(..), between, skipMany, satisfy, eof, try, single, some, many, runParser, (<|>))
 import Text.Megaparsec.Char (letterChar, alphaNumChar, string)
 import Data.Void(Void)
 import Data.Char(isSpace)
-import qualified Data.Map as Map(Map, fromList)
+import qualified Data.Map as Map(Map, fromList, (!?))
 
 type Parser = Parsec Void String
 
@@ -44,3 +45,10 @@ readProperties filePath = do
   case kv of
     (Right result) -> pure $ Just result
     (Left _) -> pure Nothing
+
+checkKeys :: [String] -> Map.Map String String -> IO ()
+checkKeys (x:xs) props =
+  case (Map.!?) props x of
+    (Just _) -> checkKeys xs props
+    Nothing -> error $ "can'r find key: " <> x
+checkKeys [] _ = pure ()
