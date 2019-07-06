@@ -2,6 +2,12 @@ module Main (
     main
 ) where
 
--- | simple main function
+import Game(executeGame)
+import System.Environment(getArgs)
+
 main :: IO ()
-main = putStrLn "privet"
+main = do
+  args <- getArgs
+  if null args
+    then executeGame Nothing
+    else executeGame (Just $ head args)

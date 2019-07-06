@@ -2,19 +2,16 @@
 
 module Utils (
   readProperties
-  , checkKeys
 ) where
 
-import Text.Megaparsec (Parsec(..), between, skipMany, satisfy, eof, try, single, some, many, runParser, (<|>))
-import Text.Megaparsec.Char (letterChar, alphaNumChar, string)
+import Text.Megaparsec (Parsec, between, skipMany, satisfy, eof, try, single, some, many, runParser, (<|>))
+import Text.Megaparsec.Char (alphaNumChar)
 import Data.Void(Void)
 import Data.Char(isSpace)
-import qualified Data.Map as Map(Map, fromList, (!?))
+import GHC.IO(catchAny)
+import qualified Data.Map as Map(Map, fromList, empty)
 
 type Parser = Parsec Void String
-
-parserFile :: Parser (Map.Map String String)
-parserFile = between spaces (spaces *> eof) undefined
 
 spaces :: Parser ()
 spaces = skipMany $ satisfy isSpace
@@ -38,17 +35,11 @@ properties = between spaces (spaces *> eof) (Map.fromList <$> many wrapKeyValue)
 
 -- | Read file with properties in format:
 --  key=value and write parsed values to Map
-readProperties :: String -> IO (Maybe (Map.Map String String))
-readProperties filePath = do
+readProperties :: String -> IO (Map.Map String String)
+readProperties filePath = catchAny
+  (do
   content <- readFile filePath
   let kv = runParser properties filePath content
   case kv of
-    (Right result) -> pure $ Just result
-    (Left _) -> pure Nothing
-
-checkKeys :: [String] -> Map.Map String String -> IO ()
-checkKeys (x:xs) props =
-  case (Map.!?) props x of
-    (Just _) -> checkKeys xs props
-    Nothing -> error $ "can'r find key: " <> x
-checkKeys [] _ = pure ()
+    (Right result) -> pure result
+    (Left _) -> pure Map.empty) (\_ -> pure Map.empty)

@@ -1,2 +1,5 @@
 VSEM PRIVEI KTO IZ PITERA?
 PLEZ NI KOTAI A TO SPALAT'
+
+
+sudo apt-get install freeglut3 freeglut3-dev
